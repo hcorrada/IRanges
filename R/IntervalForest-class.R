@@ -3,7 +3,7 @@
 ### -------------------------------------------------------------------------
 
 setClass("IntervalForest",
-         representation(ptr = "externalptr", mode = "character"),
+         representation(ptr = "externalptr", mode = "character", partition="factor"),
          contains = "Ranges")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -11,9 +11,9 @@ setClass("IntervalForest",
 ###
 
 setMethod("length", "IntervalForest", function(x) .IntervalForestCall(x, "length"))
-
 setMethod("start", "IntervalForest", function(x) .IntervalForestCall(x, "start"))
 setMethod("end", "IntervalForest", function(x) .IntervalForestCall(x, "end"))
+setMethod("levels", "IntervalForest", function(x) levels(x@partition))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
@@ -27,13 +27,26 @@ IntervalForest <- function(ranges, partition) {
     stop("partition must be of class 'factor'")
   }
   npartitions <- nlevels(partition)
-  partition <- as.integer(partition)
+  levels <- levels(partition)
+  partitionIndices <- as.integer(partition)
   
-  ptr <- .Call2("IntegerIntervalForest_new", ranges, partition, npartitions, PACKAGE="IRanges")
-  new2("IntervalForest", ptr = ptr, mode="integer", check=FALSE)
+  ptr <- .Call2("IntegerIntervalForest_new", ranges, partitionIndices, npartitions, PACKAGE="IRanges")
+  new2("IntervalForest", ptr = ptr, mode="integer", partition=partition, check=FALSE)
 }
 
 
+### - - - - 
+### Subsetting
+###
+
+setMethod("[", "IntervalForest",
+          function(x, i, j, ..., drop=TRUE) {
+            if (!missing(j) || length(list(...)) > 0L)
+              stop("invalid subsetting")
+            newRanges <- callGeneric(as(x, "IRanges"), i=i, ...)
+            newPartition <- callGeneric(x@partition, i=i, ...)
+            IntervalForest(newRanges, newPartition)
+          })
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Low-level utilities
 ###

@@ -368,6 +368,10 @@ SEXP IntegerIntervalTree_overlap_any(SEXP r_tree, SEXP r_ranges,
   return r_ordered;
 }
 
+SEXP IntegerIntervalForest_overlap_any(SEXP r_tree, SEXP r_ranges, SEXP r_partition, SEXP r_order)
+{
+  return R_NilValue;
+}
 SEXP IntegerIntervalTree_overlap_arbitrary(SEXP r_tree, SEXP r_ranges,
                                            SEXP r_order) {
   int i, *left, *right, *o_elt, nranges = _get_IRanges_length(r_ranges);
@@ -387,6 +391,10 @@ SEXP IntegerIntervalTree_overlap_arbitrary(SEXP r_tree, SEXP r_ranges,
   return r_ordered;
 }
 
+SEXP IntegerIntervalForest_overlap_arbitrary(SEXP r_tree, SEXP r_ranges, SEXP r_partition, SEXP r_order)
+{
+  return R_NilValue;
+}
 SEXP IntegerIntervalTree_overlap_first(SEXP r_tree, SEXP r_ranges,
                                        SEXP r_order)
 {
@@ -428,6 +436,10 @@ SEXP IntegerIntervalTree_overlap_first(SEXP r_tree, SEXP r_ranges,
   return r_results;
 }
 
+SEXP IntegerIntervalForest_overlap_first(SEXP r_tree, SEXP r_ranges, SEXP r_partition, SEXP r_order)
+{
+  return R_NilValue;
+}
 SEXP IntegerIntervalTree_overlap_last(SEXP r_tree, SEXP r_ranges,
                                       SEXP r_order)
 {
@@ -469,6 +481,10 @@ SEXP IntegerIntervalTree_overlap_last(SEXP r_tree, SEXP r_ranges,
   return r_results;
 }
 
+SEXP IntegerIntervalForest_overlap_last(SEXP r_forest, SEXP r_ranges, SEXP r_partition, SEXP r_order)
+{
+  return R_NilValue;
+}
 SEXP IntegerIntervalTree_overlap_all(SEXP r_tree, SEXP r_ranges, SEXP r_order)
 {
   struct rbTree *tree = R_ExternalPtrAddr(r_tree);
@@ -527,6 +543,10 @@ SEXP IntegerIntervalTree_overlap_all(SEXP r_tree, SEXP r_ranges, SEXP r_order)
   return r_results;
 }
 
+SEXP IntegerIntervalForest_overlap_all(SEXP r_forest, SEXP r_ranges, SEXP r_partition, SEXP r_order)
+{
+  return R_NilValue;
+}
 // finds the node to the right of each element of sorted query
 /*
 struct rbTreeNode**
