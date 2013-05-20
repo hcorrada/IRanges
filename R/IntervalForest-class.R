@@ -59,3 +59,9 @@ setMethod("[", "IntervalForest",
     .Call2(fun, object@ptr, ..., PACKAGE="IRanges")
   } else stop("unknown interval forest mode: ", object@mode)
 }
+
+## not for exporting, just a debugging utility
+IntervalForestDump <- function(object) {
+  cat("IntervalForest, levels: ", levels(object), "\n")
+  .IntervalForestCall(object, "dump")
+}

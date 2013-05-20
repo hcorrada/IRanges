@@ -117,19 +117,28 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
               query <-
               resize(query, width(query) + 2L * adjust, fix = "center")
             unsortedQuery <- query
-            if (isNotSorted(start(query))) { ## query must be sorted
-              query_ord <- sort.list(start(query), method = "quick",
-                                     na.last = NA)
+            unsortedPartition <- partition
+            
+            .checkSorted <- function(partition, query) {
+              if (isNotSorted(partition))
+                return(FALSE)
+              
+              split_starts <- split(start(query),partition)
+              return(any(sapply(split_starts,isNotSorted)))
+            }
+            if (!.checkSorted(partition, query)) { ## query must be sorted
+              query_ord <- order(partition, start(query), na.last = NA)
+              #query_ord <- sort.list(start(query), method = "quick",
+              #                       na.last = NA)
               query <- query[query_ord]
               partition <- partition[query_ord]
             } else {
               query_ord <- seq_len(length(query))
             }
             validObject(query)
-            partition <- match(partition, subject@levels)
+            partition <- match(partition, levels(subject))
             fun <- paste("overlap_", select, sep = "")
             result <- .IntervalForestCall(subject, fun, query, partition, query_ord)
-            return(result) # stopping here for testing
             
             if (type != "any" || minoverlap > 1L) {
               m <- as.matrix(result)
