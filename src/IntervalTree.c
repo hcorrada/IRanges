@@ -23,6 +23,7 @@ typedef struct _IntegerIntervalNode {
   IntegerInterval interval;
   unsigned int index; /* identifies the interval */
   int maxEnd; /* maximum end value in children */
+  unsigned int indexPosition;
 } IntegerIntervalNode;
 
 typedef struct _IntegerIntervalForest {
@@ -84,9 +85,15 @@ static void _IntegerIntervalForest_free(SEXP r_forest) {
 
 static void _IntegerIntervalTree_add(struct rbTree *tree, int start, int end,
                        unsigned int index) {
-  IntegerIntervalNode tmpInterval = { { start, end }, index, 0 };
+  IntegerIntervalNode tmpInterval = { { start, end }, index, 0, index };
   IntegerIntervalNode *interval =
     lmCloneMem(tree->lm, &tmpInterval, sizeof(tmpInterval));
+  rbTreeAdd(tree, interval);
+}
+
+static void _IntegerIndexedIntervalTree_add(struct rbTree *tree, int start, int end, unsigned int index, unsigned int indexPosition) {
+  IntegerIntervalNode tmpInterval = { { start, end }, index, 0, indexPosition };
+  IntegerIntervalNode *interval = lmCloneMem(tree->lm, &tmpInterval, sizeof(tmpInterval));
   rbTreeAdd(tree, interval);
 }
 
@@ -142,7 +149,6 @@ SEXP IntegerIntervalTree_new(SEXP r_ranges) {
   return r_tree;
 }
 
-
 IntervalForest *_IntegerIntervalForest_new(int npartitions) {
   int i;
   struct lm *lm = lmInit(0);
@@ -178,17 +184,17 @@ SEXP IntegerIntervalForest_new(SEXP r_ranges, SEXP r_partition, SEXP r_npartitio
     tree_sizes[i] = 0;
   }
   struct rbTree *tree;
-  
+
   pushRHandlers();
   for (i = 0; i < nranges; i++) {
     start = _get_cachedIRanges_elt_start(&cached_r_ranges, i);
     end = _get_cachedIRanges_elt_end(&cached_r_ranges, i);
+
     
     cur_partition = partition[i]-1;
     tree = _IntegerIntervalForest_getTree(forest, cur_partition);
     
-    tree_sizes[cur_partition] += 1;
-    
+    tree_sizes[cur_partition] += 1;    
     
     if (end >= start)
       _IntegerIntervalTree_add(tree, start, end, i+1);
@@ -207,7 +213,6 @@ SEXP IntegerIntervalForest_new(SEXP r_ranges, SEXP r_partition, SEXP r_npartitio
   
   return r_forest;
 }
-
 
 /* If result_ints is NULL, returns a logical vector of with
  * length(r_ranges) elements whose values indicate whether or at
@@ -629,7 +634,7 @@ SEXP IntegerIntervalTree_overlap_first(SEXP r_tree, SEXP r_ranges,
        i < nranges; i++, o_elt++, left++, right++) {
     r_elt = r_vector + (*o_elt - 1);
     for (j = *left; j < *right; j++) {
-      index = ((IntegerIntervalNode *)result->val)->index;
+      index = ((IntegerIntervalNode *)result->val)->indexPosition;
       if (*r_elt == NA_INTEGER || (*r_elt > index))
         *r_elt = index;
       result = result->next;
@@ -709,7 +714,7 @@ SEXP IntegerIntervalTree_overlap_last(SEXP r_tree, SEXP r_ranges,
        i < nranges; i++, o_elt++, left++, right++) {
     r_elt = r_vector + (*o_elt - 1);
     for (j = *left; j < *right; j++) {
-      index = ((IntegerIntervalNode *)result->val)->index;
+      index = ((IntegerIntervalNode *)result->val)->indexPosition;
       if (*r_elt == NA_INTEGER || (*r_elt < index))
         *r_elt = index;
       result = result->next;
@@ -793,7 +798,7 @@ SEXP IntegerIntervalTree_overlap_all(SEXP r_tree, SEXP r_ranges, SEXP r_order)
   int *r_subject_col = (int *) R_alloc((long) nhits, sizeof(int));
   for (result = results, r_elt = r_subject_col; result != NULL;
        result = result->next, r_elt++)
-    *r_elt = ((IntegerIntervalNode *)result->val)->index;
+    *r_elt = ((IntegerIntervalNode *)result->val)->indexPosition;
 
   int *row = (int *) R_alloc((long) nhits, sizeof(int));
   _get_order_of_int_pairs(r_query_col, r_subject_col, nhits, 0, row, 0);
@@ -1006,6 +1011,7 @@ IntegerInterval **_IntegerIntervalForest_intervals(IntervalForest *forest) {
   return intervals;
 }
 
+
 SEXP IntegerIntervalTree_asIRanges(SEXP r_tree) {
   SEXP r_start, r_width, r_ranges;
   struct rbTree *tree = R_ExternalPtrAddr(r_tree);
@@ -1138,3 +1144,4 @@ SEXP IntegerIntervalForest_dump(SEXP r_forest) {
   }
   return R_NilValue;
 }
+
