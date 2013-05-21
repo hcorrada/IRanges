@@ -18,7 +18,7 @@ exportClasses(
     List, SimpleList, CompressedList,
     Ranges, RangesORmissing,
     IRanges, NormalIRanges,
-    IntervalTree,
+    IntervalTree, IntervalForest, 
     Grouping, H2LGrouping, Dups,
     Partitioning, PartitioningByEnd, PartitioningByWidth,
     Views,
@@ -236,7 +236,7 @@ export(
     whichAsIRanges,
     asNormalIRanges,
     rangeComparisonCodeToLetter,
-    IntervalTree,
+    IntervalTree, IntervalForest, 
     H2LGrouping, Dups, PartitioningByEnd, PartitioningByWidth,
     RangedData, RangedDataList,
     RangedSelection,
@@ -485,4 +485,3 @@ exportMethods(
     expand,
     classNameForDisplay
 )
-
