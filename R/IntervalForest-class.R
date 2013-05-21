@@ -20,12 +20,25 @@ setMethod("levels", "IntervalForest", function(x) levels(x@partition))
 ###
 
 IntervalForest <- function(ranges, partition) {
-  validObject(ranges)
-  validObject(partition)
-  
   if (!is(partition, "factor")) {
     stop("partition must be of class 'factor'")
   }
+  
+  if (is(partition, "Rle")) {
+    if (!is.factor(runValue(partition))) {
+      stop("'partition' must be a 'factor' Rle or 'factor'")
+    }
+  } else {
+    if (!is.factor(partition)) {
+      stop("'partition' must be a 'factor' Rle or 'factor'")
+    }
+    #partition <- Rle(partition)
+  }
+  
+  validObject(ranges)
+  validObject(partition)
+  
+  
   npartitions <- nlevels(partition)
   levels <- levels(partition)
   partitionIndices <- as.integer(partition)
