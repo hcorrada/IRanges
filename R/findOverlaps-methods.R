@@ -99,8 +99,16 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
               stop("'maxgap' must be a single, non-negative integer")
             if (!isSingleNumber(minoverlap) || minoverlap < 1L)
               stop("'minoverlap' must be a single, positive integer")
-            if (!is(partition, "factor")) {
-              stop("'partition' must be a factor")
+
+            if (!is(partition, "Rle")) {
+              if (!is.factor(partition)) {
+                stop("'partition' must be a factor Rle or factor")
+              }
+              partition <- Rle(partition)
+            } else {
+              if (!is.factor(runValue(partition))) {
+                stop("'partition' must be a factor Rle or factor")
+              }
             }
             
             type <- match.arg(type)
@@ -120,14 +128,17 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
             unsortedPartition <- partition
             
             .checkSorted <- function(partition, query) {
-              if (isNotSorted(partition))
+              if (isNotSorted(runValue(partition)))
                 return(FALSE)
               
-              split_starts <- split(start(query),partition)
-              return(any(sapply(split_starts,isNotSorted)))
+              split_part <- splitRanges(partition)
+              query_start <- start(query)
+              res <- sapply(split_part, function(ind) isNotSorted(seqselect(query_start, ind)))
+              return(any(res))
             }
             if (!.checkSorted(partition, query)) { ## query must be sorted
-              query_ord <- order(partition, start(query), na.last = NA)
+              # TODO: this could handle Rles better
+              query_ord <- order(decodeRle(partition), start(query), na.last = NA)
               #query_ord <- sort.list(start(query), method = "quick",
               #                       na.last = NA)
               query <- query[query_ord]
@@ -138,6 +149,8 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
             validObject(query)
             partition <- match(partition, levels(subject))
             fun <- paste("overlap_", select, sep = "")
+            # TODO: this could be handled better by Rle
+            partition <- decodeRle(partition)
             result <- .IntervalForestCall(subject, fun, query, partition, query_ord)
             
             if (type != "any" || minoverlap > 1L) {

@@ -227,7 +227,7 @@ test_IntervalForest_asRanges <- function() {
 
 test_IntervalForest_subset <- function() {
   ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  partition <- factor(c("a","b","a"))
+  partition <- Rle(factor(c("a","b","a")))
   
   tree <- IntervalForest(ranges, partition)
   checkIdentical(as(tree, "IRanges"), ranges)

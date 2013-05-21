@@ -3,7 +3,7 @@
 ### -------------------------------------------------------------------------
 
 setClass("IntervalForest",
-         representation(ptr = "externalptr", mode = "character", partition="factor"),
+         representation(ptr = "externalptr", mode = "character", partition="Rle"),
          contains = "Ranges")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -20,10 +20,6 @@ setMethod("levels", "IntervalForest", function(x) levels(x@partition))
 ###
 
 IntervalForest <- function(ranges, partition) {
-  if (!is(partition, "factor")) {
-    stop("partition must be of class 'factor'")
-  }
-  
   if (is(partition, "Rle")) {
     if (!is.factor(runValue(partition))) {
       stop("'partition' must be a 'factor' Rle or 'factor'")
@@ -32,7 +28,7 @@ IntervalForest <- function(ranges, partition) {
     if (!is.factor(partition)) {
       stop("'partition' must be a 'factor' Rle or 'factor'")
     }
-    #partition <- Rle(partition)
+    partition <- Rle(partition)
   }
   
   validObject(ranges)

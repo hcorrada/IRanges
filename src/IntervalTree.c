@@ -266,7 +266,7 @@ SEXP _IntegerIntervalTree_overlap(struct rbTree *tree, SEXP r_ranges,
       for (struct slRef *a = active_head; a != NULL;) {
         IntegerInterval *interval = a->val;
         if (interval->end < start) { /* never see this again */
-          Rprintf("LINE %d -- goodbye: %d\n", __LINE__, ((IntegerIntervalNode*)interval)->index);
+          /* Rprintf("LINE %d -- goodbye: %d\n", __LINE__, ((IntegerIntervalNode*)interval)->index); */
           struct slRef *next = a->next;
           if (prev)
             prev->next = next;
@@ -278,7 +278,7 @@ SEXP _IntegerIntervalTree_overlap(struct rbTree *tree, SEXP r_ranges,
           if (interval->start > end) /* no more hits here */
             break;
           struct slRef *resultNode = slRefNew(interval);
-          Rprintf("LINE %d -- p hit: %d\n", __LINE__, ((IntegerIntervalNode*)interval)->index);
+          /* Rprintf("LINE %d -- p hit: %d\n", __LINE__, ((IntegerIntervalNode*)interval)->index); */
           slAddHead(result_ints, resultNode); /* owns Node */
           count++;
           prev = a;
@@ -292,9 +292,9 @@ SEXP _IntegerIntervalTree_overlap(struct rbTree *tree, SEXP r_ranges,
       /* is node on top of stack? */
       Rboolean visited = height && p == tree->stack[height-1];
       /* have to retry nodes on stack after query switch */
-      Rprintf("LINE %d -- subject: %d,%d,%d / query: %d,%d, stack: %d\n", __LINE__,
+      /* Rprintf("LINE %d -- subject: %d,%d,%d / query: %d,%d, stack: %d\n", __LINE__,
               interval->start, interval->end,
-              ((IntegerIntervalNode *)interval)->maxEnd, start, end, height);
+              ((IntegerIntervalNode *)interval)->maxEnd, start, end, height); */
 
       /* in-order traversal of tree */
 
