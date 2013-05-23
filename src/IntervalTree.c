@@ -984,7 +984,7 @@ IntegerInterval **_IntegerIntervalForest_intervals(IntervalForest *forest) {
     if (tree->n && p) {
       while (1) {
         /* is node on top of stack? */
-        Rboolean visited = height && p == tree->stack[height=1];
+        Rboolean visited = height && p == tree->stack[height - 1];
         /* first, check for overlap */
         if (!visited && p->left) {
           /* push current node onto stack */

@@ -23,6 +23,11 @@ test_IntervalForest_construction <- function() {
   checkIdentical(levels(tree), c("a","b"))
   checkTrue(validObject(tree))
 
+  tree <- IntervalForest(IRanges(1:10,width=1), factor(rep("a",10)))
+  checkIdentical(start(tree), as.integer(1:10))
+  checkIdentical(width(tree), rep(1L,10))
+  checkTrue(validObject(tree))
+  
   checkException(IntervalForest(), silent = TRUE)
   checkException(IntervalForest(subject, query, qpartition), silent = TRUE)
   checkException(IntervalForest(NULL, NULL), silent = TRUE)
