@@ -68,6 +68,7 @@ Collate: S4-utils.R
 	RangesMapping-class.R
 	IntervalTree-class.R
 	IntervalTree-utils.R
+	IntervalForest-class.R
 	OverlapEncodings-class.R
 	RangedSelection-class.R
 	read.Mask.R
