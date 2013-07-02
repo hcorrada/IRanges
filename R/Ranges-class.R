@@ -129,17 +129,13 @@ setMethod("[[", "Ranges",
 setMethod("show", "Ranges",
     function(object)
     {
-        nhalf <- 5L
+        nhead <- get_showHeadLines()
+        ntail <- get_showTailLines()
         lo <- length(object)
-        if (is.null(nhead <- getOption("showHeadLines")))
-            nhead <- nhalf 
-        if (is.null(ntail <- getOption("showTailLines")))
-            ntail <- nhalf 
-
         cat(class(object), " of length ", lo, "\n", sep="")
         if (lo == 0L)
             return(NULL)
-        if (lo < (nhalf*2+1L) | (lo < (nhead+ntail+1L))) {
+        if (lo < (nhead + ntail + 1L)) {
             showme <-
               as.data.frame(object,
                             row.names=paste0("[", seq_len(lo), "]"))
