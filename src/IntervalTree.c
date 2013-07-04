@@ -91,12 +91,6 @@ static void _IntegerIntervalTree_add(struct rbTree *tree, int start, int end,
   rbTreeAdd(tree, interval);
 }
 
-static void _IntegerIndexedIntervalTree_add(struct rbTree *tree, int start, int end, unsigned int index, unsigned int indexPosition) {
-  IntegerIntervalNode tmpInterval = { { start, end }, index, 0, indexPosition };
-  IntegerIntervalNode *interval = lmCloneMem(tree->lm, &tmpInterval, sizeof(tmpInterval));
-  rbTreeAdd(tree, interval);
-}
-
 /* need non-recursive implementation */
 static void _IntegerIntervalNode_calc_max_end(struct rbTreeNode *node) {
   int maxEnd;
