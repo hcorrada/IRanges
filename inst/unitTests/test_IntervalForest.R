@@ -139,6 +139,18 @@ test_IntervalForest_findOverlaps <- function() {
   result <- findOverlaps(query, tree, partition=qpartition)
   checkOverlap(result, c(1, 1, 2, 2, 2), c(1, 2, 3, 4, 5), 3, 5)
 
+  # on unsorted query
+  query <- IRanges(c(10, 5, 3, 7, 9), c(15, 7, 7, 10, 12))
+  qpartition <- factor(c("a","b","b","a","a"))
+  result <- findOverlaps(query, tree, partition=qpartition)
+  checkOverlap(result, c(2, 2, 2, 3, 3, 3), c(3, 4, 5, 3, 4, 5), 5, 5)
+
+  # query with partition level not in subject
+  query <- IRanges(c(10, 5, 3, 7, 9), c(15, 7, 7, 10, 12))
+  qpartition <- factor(c("a","b","c","a","a"))
+  result <- findOverlaps(query, tree, partition=qpartition)
+  checkOverlap(result, c(2, 2, 2), c(3, 4, 5), 5, 5)
+
 #   subject <- IRanges(c(1, 6, 13), c(4, 9, 14)) # single points (this doesn't work since findOverlaps-integer,Ranges doesn't pass ...)
 #   spartition <- factor(c("a","b","c"))
 #   subject <- IntervalForest(subject, spartition)

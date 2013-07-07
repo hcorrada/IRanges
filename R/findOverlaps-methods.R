@@ -110,6 +110,10 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
                 stop("'partition' must be a factor Rle or factor")
               }
             }
+
+            if (length(query) != length(partition)) {
+              stop("'partition' must be the same length as 'query'")
+            }
             
             type <- match.arg(type)
             select <- match.arg(select)
@@ -124,34 +128,42 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
             if (adjust > 0L)
               query <-
               resize(query, width(query) + 2L * adjust, fix = "center")
+
             unsortedQuery <- query
             unsortedPartition <- partition
-            
-            .checkSorted <- function(partition, query) {
-              if (isNotSorted(runValue(partition)))
-                return(FALSE)
-              
-              split_part <- splitRanges(partition)
-              query_start <- start(query)
-              res <- sapply(split_part, function(ind) isNotSorted(seqselect(query_start, ind)))
-              return(any(res))
+
+            # query and partition must be sorted by partition then start
+            query_ord <- seq_len(length(query))
+            partition_split <- splitRanges(partition)
+            last <- 0
+            isSorted <- !isNotSorted(runValue(partition))
+            for (i in seq_along(partition_split)) {
+              ind <- partition_split[[i]]
+              curStarts <- seqselect(start(query), ind)
+              ind <- as.integer(ind)
+              curPartitionLength <- length(ind)
+  
+              if (isNotSorted(curStarts)) {
+                ind <- ind[order(curStarts)]
+                isSorted <- FALSE
+              }
+              query_ord[last+seq_len(curPartitionLength)] <- ind
+              last <- last + curPartitionLength
             }
-            if (!.checkSorted(partition, query)) { ## query must be sorted
-              # TODO: this could handle Rles better
-              query_ord <- order(decodeRle(partition), start(query), na.last = NA)
-              #query_ord <- sort.list(start(query), method = "quick",
-              #                       na.last = NA)
+            if (!isSorted) {
               query <- query[query_ord]
               partition <- partition[query_ord]
-            } else {
-              query_ord <- seq_len(length(query))
             }
+
+            # match query partition to subject partition            
+            partitionIndices <- match(runValue(partition), levels(subject))
+            
             validObject(query)
-            partition <- match(partition, levels(subject))
+            validObject(partition)
+
             fun <- paste("overlap_", select, sep = "")
             # TODO: this could be handled better by Rle
-            partition <- decodeRle(partition)
-            result <- .IntervalForestCall(subject, fun, query, partition, query_ord)
+            result <- .IntervalForestCall(subject, fun, query, partitionIndices, runLength(partition), query_ord)
             
             if (type != "any" || minoverlap > 1L) {
               m <- as.matrix(result)
