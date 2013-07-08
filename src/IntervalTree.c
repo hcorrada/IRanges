@@ -775,36 +775,50 @@ SEXP IntegerIntervalTree_nearest(SEXP r_tree, SEXP r_ranges, SEXP r_self) {
 }
 */
 
-/* Traverses the tree, pulling out the intervals, in order */
-IntegerInterval **_IntegerIntervalTree_intervals(struct rbTree *tree) {
+int _IntegerIntervalTree_intervalsHelper(struct rbTree *tree, IntegerInterval **intervals, int nintervals)
+{
   struct rbTreeNode *p = tree->root;
-  int height = 0;
-  IntegerInterval **intervals = Salloc(tree->n, IntegerInterval *);
+  int height = 0, curIndex;
 
   if (tree->n && p)
-    while(1) {
-      /* is node on top of stack? */
-      Rboolean visited = height && p == tree->stack[height-1];
-      /* first, check for overlap */
-      if (!visited && p->left) {
-        /* push current node onto stack */
-        tree->stack[height++] = p;
-        /* go left */
-        p = p->left;
-      } else {       /* can't go left, handle this node */
-        intervals[((IntegerIntervalNode *)p->item)->index - 1] =
-          (IntegerInterval *)p->item;
-        if (visited)
-          height--; /* pop handled node if on stack */
-        if (p->right) /* go right if possible */
-          p = p->right;
-        else if (height) /* more on stack */
-          p = tree->stack[height-1];
-        else
-          break; /* nothing left on stack, we're finished */
+  while(1) {
+    /* is node on top of stack? */
+    Rboolean visited = height && p == tree->stack[height-1];
+    /* first, check for overlap */
+    if (!visited && p->left) {
+      /* push current node onto stack */
+      tree->stack[height++] = p;
+      /* go left */
+      p = p->left;
+    } else {       /* can't go left, handle this node */
+      curIndex = ((IntegerIntervalNode *)p->item)->index - 1; 
+      if (curIndex < 0 || curIndex > nintervals) {
+        return -1;
       }
+      intervals[curIndex] =
+        (IntegerInterval *)p->item;
+      if (visited)
+        height--; /* pop handled node if on stack */
+      if (p->right) /* go right if possible */
+        p = p->right;
+      else if (height) /* more on stack */
+        p = tree->stack[height-1];
+      else
+        break; /* nothing left on stack, we're finished */
     }
+  }
+  return 0;
+}
 
+/* Traverses the tree, pulling out the intervals, in order */
+IntegerInterval **_IntegerIntervalTree_intervals(struct rbTree *tree) {
+  IntegerInterval **intervals = Salloc(tree->n, IntegerInterval *);
+  int result = _IntegerIntervalTree_intervalsHelper(tree, intervals, tree->n);
+  if (result) {
+    /* error */
+    Rprintf("LINE %d -- result %d\n", __LINE__, result);
+    return NULL;
+  }
   return intervals;
 }
 
@@ -812,41 +826,14 @@ IntegerInterval **_IntegerIntervalTree_intervals(struct rbTree *tree) {
 /* this should be cleaned up as it duplicates a lot of code above */
 IntegerInterval **_IntegerIntervalForest_intervals(IntervalForest *forest) {
   struct rbTree *tree;
-  struct rbTreeNode *p;
-  
-  int height, cur_partition;
+  int cur_partition, result;
   IntegerInterval **intervals = Salloc(forest->n, IntegerInterval *);
-  
+
   for (cur_partition = 0; cur_partition < forest->npartitions; cur_partition++) {
     tree = _IntegerIntervalForest_getTree(forest, cur_partition);
-    p = tree->root;
-    height = 0;
-    
-    if (tree->n && p) {
-      while (1) {
-        /* is node on top of stack? */
-        Rboolean visited = height && p == tree->stack[height - 1];
-        /* first, check for overlap */
-        if (!visited && p->left) {
-          /* push current node onto stack */
-          tree->stack[height++] = p;
-          /* go left */
-          p = p->left;
-        } else { /* can't go left, handle this node */
-          intervals[((IntegerIntervalNode *)p->item)->index - 1] = (IntegerInterval *)p->item;
-          if (visited) {
-            height--; /* pop handled node if on stack */
-          }
-          if (p->right) { /* for right if possible */
-            p = p->right;
-          }
-          else if (height) { /* more on stack */
-            p = tree->stack[height-1];
-          } else {
-            break; /* nothing left on stack, we're finished */
-          }
-        }
-      }
+    result = _IntegerIntervalTree_intervalsHelper(tree, intervals, forest->n);
+    if (result) {
+      return NULL;
     }
   }
   return intervals;
@@ -946,7 +933,6 @@ SEXP IntegerIntervalForest_end(SEXP r_forest) {
   }
   
   return r_end;
-  return ScalarInteger(12345);  
 }
 
 SEXP IntegerIntervalTree_length(SEXP r_tree) {
