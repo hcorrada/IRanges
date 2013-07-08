@@ -17,89 +17,158 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
         standardGeneric("findOverlaps")
 )
 
+###
+### The next two functions are pre/post processing functions shared
+### by the IntervalTree and IntervalForest versions of findOverlaps
+###
+### pre-process query (sort and adjust) and partition (if not NULL)
+.preProcess_findOverlaps_query <- function(query, maxgap, minoverlap, partition=NULL) {
+  res <- list()  
+  query <- as(query, "IRanges")
+  query_ord <- NULL
+  res$origQuery <- query
+  adjust <- maxgap - minoverlap + 1L
+  if (adjust > 0L)
+    query <-
+      resize(query, width(query) + 2L * adjust, fix = "center")
+  res$unsortedQuery <- query
+  res$unsortedPartition <- partition
+
+  if (is.null(partition)) {
+    if (isNotSorted(start(query))) { ## query must be sorted
+      query_ord <- sort.list(start(query), method = "quick",
+                             na.last = NA)
+      query <- query[query_ord]
+    } else {
+      query_ord <- seq_len(length(query))
+    }
+  } else {
+    # query and partition must be sorted by partition then start
+    query_ord <- seq_len(length(query))
+    isSorted <- !isNotSorted(runValue(partition))
+  
+    partition_split <- splitRanges(partition)
+    last <- 0
+    for (i in seq_along(partition_split)) {
+      ind <- partition_split[[i]]
+      curStarts <- seqselect(start(query), ind)
+      ind <- as.integer(ind)
+      curPartitionLength <- length(ind)
+
+      if (isNotSorted(curStarts)) {
+        ind <- ind[order(curStarts)]
+        isSorted <- FALSE
+      }
+      query_ord[last+seq_len(curPartitionLength)] <- ind
+      last <- last + curPartitionLength
+    }
+    if (!isSorted) {
+      query <- query[query_ord]
+      partition <- partition[query_ord]
+    }
+  }
+  res$query <- query
+  res$query_ord <- query_ord
+  res$partition <- partition
+  res
+}
+
+### post-process result based on overlap type and select
+.postProcess_findOverlaps_result <- function(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
+{
+  if (type != "any" || minoverlap > 1L) {
+    m <- as.matrix(result)
+    if (minoverlap > 1L) {
+      r <- ranges(result, unsortedQuery, subject)
+      m <- m[width(r) >= minoverlap, , drop=FALSE]
+      ## unname() required because in case 'm' has only 1 row
+      ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
+      result@queryHits <- unname(m[ , 1L])
+      result@subjectHits <- unname(m[ , 2L])
+    }
+    query <- origQuery
+    
+    filterMatrix <- function(fun)
+      m[abs(fun(query)[m[,1L]] - fun(subject)[m[,2L]]) <= maxgap, ,
+        drop=FALSE]
+    
+    if (type == "within") {
+      r <- ranges(result, query, subject)
+      m <- m[width(query)[m[,1L]] - width(r) <= maxgap, , drop=FALSE]
+    } else if (type == "start") {
+      m <- filterMatrix(start)
+    } else if (type == "end") {
+      m <- filterMatrix(end)
+    } else if (type == "equal") {
+      m <- filterMatrix(start)
+      m <- filterMatrix(end)
+    }
+    
+    if (origSelect != "all") {
+      m <- m[!duplicated(m[,1L]), , drop=FALSE]
+      result <- rep.int(NA_integer_, length(query))
+      ## unname() required because in case 'm' has only 1 row
+      ## 'm[,2L]' will return a named atomic vector
+      result[m[,1L]] <- unname(m[,2L])
+    } else {
+      ## unname() required because in case 'm' has only 1 row
+      ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
+      result@queryHits <- unname(m[ , 1L])
+      result@subjectHits <- unname(m[ , 2L])
+    }
+  }
+  result
+}
+
+### findOverlaps method for IntervalTree
 setMethod("findOverlaps", c("Ranges", "IntervalTree"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
                    select = c("all", "first", "last", "arbitrary"))
           {
+            # verify inputs
             if (!isSingleNumber(maxgap) || maxgap < 0L)
               stop("'maxgap' must be a single, non-negative integer")
             if (!isSingleNumber(minoverlap) || minoverlap < 1L)
               stop("'minoverlap' must be a single, positive integer")
             type <- match.arg(type)
             select <- match.arg(select)
+
+
             origSelect <- select
             if (type != "any" || minoverlap > 1L)
               select <- "all"
-            query <- as(query, "IRanges")
-            query_ord <- NULL
-            origQuery <- query
-            adjust <- maxgap - minoverlap + 1L
-            if (adjust > 0L)
-              query <-
-                resize(query, width(query) + 2L * adjust, fix = "center")
-            unsortedQuery <- query
-            if (isNotSorted(start(query))) { ## query must be sorted
-              query_ord <- sort.list(start(query), method = "quick",
-                                     na.last = NA)
-              query <- query[query_ord]
-            } else {
-              query_ord <- seq_len(length(query))
-            }
+
+            # preprocess query
+            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap)
+            origQuery <- preprocRes$origQuery
+            unsortedQuery <- preprocRes$origQuery
+            query <- preprocRes$query
+            query_ord <- preprocRes$query_ord
+
             validObject(query)
+
+            # make initial findOverlaps call
             fun <- paste("overlap_", select, sep = "")
             result <- .IntervalTreeCall(subject, fun, query, query_ord)
-            if (type != "any" || minoverlap > 1L) {
-              m <- as.matrix(result)
-              if (minoverlap > 1L) {
-                r <- ranges(result, unsortedQuery, subject)
-                m <- m[width(r) >= minoverlap, , drop=FALSE]
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
-                result@queryHits <- unname(m[ , 1L])
-                result@subjectHits <- unname(m[ , 2L])
-              }
-              query <- origQuery
-              filterMatrix <- function(fun)
-                m[abs(fun(query)[m[,1L]] - fun(subject)[m[,2L]]) <= maxgap, ,
-                  drop=FALSE]
-              if (type == "within") {
-                r <- ranges(result, query, subject)
-                m <- m[width(query)[m[,1L]] - width(r) <= maxgap, , drop=FALSE]
-              } else if (type == "start") {
-                m <- filterMatrix(start)
-              } else if (type == "end") {
-                m <- filterMatrix(end)
-              } else if (type == "equal") {
-                m <- filterMatrix(start)
-                m <- filterMatrix(end)
-              }
-              if (origSelect != "all") {
-                m <- m[!duplicated(m[,1L]), , drop=FALSE]
-                result <- rep.int(NA_integer_, length(query))
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[,2L]' will return a named atomic vector
-                result[m[,1L]] <- unname(m[,2L])
-              } else {
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
-                result@queryHits <- unname(m[ , 1L])
-                result@subjectHits <- unname(m[ , 2L])
-              }
-            }
-            result
+
+            # postprocess results
+            .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
           })
 
+### findOverlaps method for IntervalForest
 setMethod("findOverlaps", c("Ranges", "IntervalForest"),
           function(query, subject, partition, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
                    select = c("all", "first", "last", "arbitrary"))
           {
+            # verify inputs
             if (!isSingleNumber(maxgap) || maxgap < 0L)
               stop("'maxgap' must be a single, non-negative integer")
             if (!isSingleNumber(minoverlap) || minoverlap < 1L)
               stop("'minoverlap' must be a single, positive integer")
 
+            # verify partition is a factor and convert to Rle if needed
             if (!is(partition, "Rle")) {
               if (!is.factor(partition)) {
                 stop("'partition' must be a factor Rle or factor")
@@ -111,99 +180,39 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
               }
             }
 
+            # verify partition and query lengths agree
             if (length(query) != length(partition)) {
               stop("'partition' must be the same length as 'query'")
             }
             
+
             type <- match.arg(type)
             select <- match.arg(select)
             origSelect <- select
             if (type != "any" || minoverlap > 1L)
               select <- "all"
-            query <- as(query, "IRanges")
-            query_ord <- NULL
-            origQuery <- query
-            origPartition <- partition
-            adjust <- maxgap - minoverlap + 1L
-            if (adjust > 0L)
-              query <-
-              resize(query, width(query) + 2L * adjust, fix = "center")
 
-            unsortedQuery <- query
-            unsortedPartition <- partition
+            # preprocess query
+            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap, partition)
+            origQuery <- preprocRes$origQuery
+            unsortedQuery <- preprocRes$unsortedQuery
+            query <- preprocRes$query
+            query_ord <- preprocRes$query_ord
+            unsortedPartition <- preprocRes$unsortedPartition
+            partition <- preprocRes$partition
 
-            # query and partition must be sorted by partition then start
-            query_ord <- seq_len(length(query))
-            partition_split <- splitRanges(partition)
-            last <- 0
-            isSorted <- !isNotSorted(runValue(partition))
-            for (i in seq_along(partition_split)) {
-              ind <- partition_split[[i]]
-              curStarts <- seqselect(start(query), ind)
-              ind <- as.integer(ind)
-              curPartitionLength <- length(ind)
-  
-              if (isNotSorted(curStarts)) {
-                ind <- ind[order(curStarts)]
-                isSorted <- FALSE
-              }
-              query_ord[last+seq_len(curPartitionLength)] <- ind
-              last <- last + curPartitionLength
-            }
-            if (!isSorted) {
-              query <- query[query_ord]
-              partition <- partition[query_ord]
-            }
+            validObject(query)
+            validObject(partition)
 
             # match query partition to subject partition            
             partitionIndices <- match(runValue(partition), levels(subject))
             
-            validObject(query)
-            validObject(partition)
-
+            # make initial findOverlaps call
             fun <- paste("overlap_", select, sep = "")
-            # TODO: this could be handled better by Rle
             result <- .IntervalForestCall(subject, fun, query, partitionIndices, runLength(partition), query_ord)
-            
-            if (type != "any" || minoverlap > 1L) {
-              m <- as.matrix(result)
-              if (minoverlap > 1L) {
-                r <- ranges(result, unsortedQuery, subject)
-                m <- m[width(r) >= minoverlap, , drop=FALSE]
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
-                result@queryHits <- unname(m[ , 1L])
-                result@subjectHits <- unname(m[ , 2L])
-              }
-              query <- origQuery
-              filterMatrix <- function(fun)
-                m[abs(fun(query)[m[,1L]] - fun(subject)[m[,2L]]) <= maxgap, ,
-                  drop=FALSE]
-              if (type == "within") {
-                r <- ranges(result, query, subject)
-                m <- m[width(query)[m[,1L]] - width(r) <= maxgap, , drop=FALSE]
-              } else if (type == "start") {
-                m <- filterMatrix(start)
-              } else if (type == "end") {
-                m <- filterMatrix(end)
-              } else if (type == "equal") {
-                m <- filterMatrix(start)
-                m <- filterMatrix(end)
-              }
-              if (origSelect != "all") {
-                m <- m[!duplicated(m[,1L]), , drop=FALSE]
-                result <- rep.int(NA_integer_, length(query))
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[,2L]' will return a named atomic vector
-                result[m[,1L]] <- unname(m[,2L])
-              } else {
-                ## unname() required because in case 'm' has only 1 row
-                ## 'm[ , 1L]' and 'm[ , 2L]' will return a named atomic vector
-                result@queryHits <- unname(m[ , 1L])
-                result@subjectHits <- unname(m[ , 2L])
-              }
-            }
-            result
+
+            # postprocess findOverlaps result
+            .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)            
           })
 
 setMethod("findOverlaps", c("Ranges", "Ranges"),
