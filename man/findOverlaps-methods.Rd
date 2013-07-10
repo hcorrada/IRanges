@@ -4,6 +4,7 @@
 
 \alias{findOverlaps}
 \alias{findOverlaps,Ranges,IntervalTree-method}
+\alias{findOverlaps,Ranges,IntervalForest-method}
 \alias{findOverlaps,Ranges,Ranges-method}
 \alias{findOverlaps,Vector,missing-method}
 \alias{findOverlaps,integer,Ranges-method}
@@ -108,30 +109,33 @@
   and a subject that are both either a \link{Ranges}, \link{Views},
   \link{RangesList}, \link{ViewsList}, or \link{RangedData} object.
   (In addition, if the query is a \link{Ranges} object, the subject
-  can be an \link{IntervalTree} object. And if the subject is a
-  \link{Ranges} object, the query can be an integer vector.)
+  can be an \link{IntervalTree} object or a \link{IntervalForest} object 
+  (with non-null \code{partition} argument). And if the subject is a \link{Ranges} 
+  object, the query can be an integer vector.)
 
   See \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GenomicRanges-method}`}
   in the GenomicRanges package for methods that operate on
   \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
-  objects.
+  objects. See also the \code{?`\link[GenomicRanges]{GIntervalTree}} class and the
+  \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}`} method 
+  for finding overlaps with persistent \link{IntervalForest} objects.
 }
 
 \usage{
 findOverlaps(query, subject, maxgap=0L, minoverlap=1L,
              type=c("any", "start", "end", "within", "equal"),
-             select=c("all", "first", "last", "arbitrary"), ...)
+             select=c("all", "first", "last", "arbitrary"), partition = NULL, ...)
 
 countOverlaps(query, subject, maxgap=0L, minoverlap=1L,
-              type=c("any", "start", "end", "within", "equal"), ...)
+              type=c("any", "start", "end", "within", "equal"), partition = NULL, ...)
 
 overlapsAny(query, subject, maxgap=0L, minoverlap=1L,
-            type=c("any", "start", "end", "within", "equal"), ...)
+            type=c("any", "start", "end", "within", "equal"), partition = NULL, ...)
 query \%over\% subject
 query \%within\% subject
 
 subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
-                 type=c("any", "start", "end", "within", "equal"), ...)
+                 type=c("any", "start", "end", "within", "equal"), partition = NULL, ...)
 
 \S4method{ranges}{Hits}(x, query, subject)
 }
@@ -141,9 +145,9 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
     Each of them can be a \link{Ranges}, \link{Views}, \link{RangesList},
     \link{ViewsList}, or \link{RangedData} object.
     In addition, if \code{query} is a \link{Ranges} object, \code{subject}
-    can be an \link{IntervalTree} object.
-    And if \code{subject} is a \link{Ranges} object, \code{query} can
-    be an integer vector to be converted to length-one ranges.
+    can be an \link{IntervalTree} object or a \link{IntervalForest} (with 
+    non-NULL \code{partition} argument}). And if \code{subject} is a \link{Ranges} 
+    object, \code{query} can be an integer vector to be converted to length-one ranges.
     If \code{query} is a \link{RangesList} or \link{RangedData},
     \code{subject} must be a \link{RangesList} or \link{RangedData}.
 
@@ -208,6 +212,13 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
     returned containing indices that are offset to align with the unlisted
     \code{query}.
   }
+  \item{partition}{
+    A \link{factor} stored either as a \code{vector} or \code{Rle} object, only 
+    used when \code{subject} is an \link{IntervalForest} object. This argument partitions 
+    the \code{query} ranges such that overlaps are computed with \code{subject} ranges in 
+    the same partition. This argument is converted to an \codeRle} internally if necessary, 
+    so it is more efficient to pass this as an \code{Rle} object.
+  }
   \item{...}{
     Further arguments to be passed to or from other methods:
     \itemize{
@@ -263,6 +274,7 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
   and
   \code{`\%within\%` <- function(query, subject)
                         overlapsAny(query, subject, type="within")}.
+  Note this is not supported for \link{IntervalForest} subjects.
 
   \code{subsetByOverlaps} returns the subset of \code{query} that
   has an overlap hit with a range in \code{subject} using the specified
@@ -281,7 +293,7 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
   Communications of the ACM. 26/11/1983. ACM Press. S. 832-843, ISSN 0001-0782
 }
 
-\author{Michael Lawrence}
+\author{Michael Lawrence with contributions by Hector Corrada Bravo}
 
 \seealso{
   \itemize{
@@ -293,7 +305,13 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
           \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
           objects.
 
+    \item ?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}` in
+          the GenomicRanges package for methods that use \link{IntervalForest} objects
+          to find overlaps.
+
     \item The \code{\link{IntervalTree}} class and constructor.
+
+    \item The \code{\link{IntervalForest}} class and constructor.
 
     \item The \link{Ranges}, \link{Views}, \link{RangesList},
           \link{ViewsList}, and \link{RangedData} classes.
@@ -363,6 +381,32 @@ query \%within\% subject  # same as overlapsAny(query, subject,
 
 ## extract the regions of intersection between the overlapping ranges
 ranges(ov, query, subject)
+
+## ---------------------------------------------------------------------
+## using IntervalForest objects
+## ---------------------------------------------------------------------
+query <- IRanges(c(1, 4, 9), c(5, 7, 10))
+qpartition <- factor(c("a","a","b"))
+
+subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
+spartition <- factor(c("a","a","b"))
+
+forest <- IntervalForest(subject, spartition)
+
+## at most one hit per query
+findOverlaps(query, forest, partition=qpartition, select = "first")
+findOverlaps(query, forest, partition=qpartition, select = "last")
+findOverlaps(query, forest, partition=qpartition, select = "arbitrary")
+
+query <- IRanges(c(1, 5, 3, 4), width=c(2, 2, 4, 6))
+qpartition <- Rle(factor(c("a","a","b","b")))
+
+subject <- IRanges(c(1, 3, 5, 6), width=c(4, 4, 5, 4))
+spartition <- Rle(factor(c("a","a","b","b")))
+forest <- IntervalForest(subject, spartition)
+
+overlapsAny(query, forest, partition=qpartition, type="start")
+overlapsAny(query, forest, partition=qpartition, type="end")
 }
 
 \keyword{methods}

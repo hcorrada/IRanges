@@ -1,9 +1,17 @@
 \name{findOverlaps-IntervalForest-methods}
 
 \alias{findOverlaps-IntervalForest-methods}
+
+\alias{findOverlaps}
 \alias{findOverlaps,Ranges,IntervalForest-method}
+
+\alias{countOverlaps}
 \alias{countOverlaps,Ranges,IntervalForest-method}
+
+\alias{overlapsAny}
 \alias{overlapsAny,Ranges,IntervalForest-method}
+
+\alias{subsetByOverlaps}
 \alias{subsetByOverlaps,Ranges,IntervalForest-method}
 
 \title{Finding overlapping ranges in an Interval Forest}
@@ -21,18 +29,18 @@
 }
 
 \usage{
-findOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
+findOverlaps(query, subject, maxgap=0L, minoverlap=1L,
              type=c("any", "start", "end", "within", "equal"),
-             select=c("all", "first", "last", "arbitrary"), ...)
+             select=c("all", "first", "last", "arbitrary"), partition, ...)
 
-countOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
-              type=c("any", "start", "end", "within", "equal"), ...)
+countOverlaps(query, subject, maxgap=0L, minoverlap=1L,
+              type=c("any", "start", "end", "within", "equal"), partition, ...)
 
-overlapsAny(query, subject, partition, maxgap=0L, minoverlap=1L,
-            type=c("any", "start", "end", "within", "equal"), ...)
+overlapsAny(query, subject, maxgap=0L, minoverlap=1L,
+            type=c("any", "start", "end", "within", "equal"), partition, ...)
 
-subsetByOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
-                 type=c("any", "start", "end", "within", "equal"), ...)
+subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
+                 type=c("any", "start", "end", "within", "equal"), partition, ...)
 }
 
 \arguments{
@@ -104,9 +112,6 @@ subsetByOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
             See \code{query} and \code{subject} arguments above for the
             details.
     }
-  }
-  \item{x}{
-    \link{Hits} object returned by \code{findOverlaps}.
   }
 }
 
