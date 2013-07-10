@@ -1,169 +1,53 @@
-\name{findOverlaps-methods}
+\name{findOverlaps-IntervalForest-methods}
 
-\alias{findOverlaps-methods}
+\alias{findOverlaps-IntervalForest-methods}
+\alias{findOverlaps,Ranges,IntervalForest-method}
+\alias{countOverlaps,Ranges,IntervalForest-method}
+\alias{overlapsAny,Ranges,IntervalForest-method}
+\alias{subsetByOverlaps,Ranges,IntervalForest-method}
 
-\alias{findOverlaps}
-\alias{findOverlaps,Ranges,IntervalTree-method}
-\alias{findOverlaps,Ranges,Ranges-method}
-\alias{findOverlaps,Vector,missing-method}
-\alias{findOverlaps,integer,Ranges-method}
-\alias{findOverlaps,Views,Views-method}
-\alias{findOverlaps,Views,Vector-method}
-\alias{findOverlaps,Vector,Views-method}
-\alias{findOverlaps,RangesList,RangesList-method}
-\alias{findOverlaps,ViewsList,ViewsList-method}
-\alias{findOverlaps,ViewsList,Vector-method}
-\alias{findOverlaps,Vector,ViewsList-method}
-\alias{findOverlaps,RangedData,RangedData-method}
-\alias{findOverlaps,RangedData,RangesList-method}
-\alias{findOverlaps,RangesList,RangedData-method}
-
-\alias{countOverlaps}
-\alias{countOverlaps,ANY,Vector-method}
-\alias{countOverlaps,ANY,missing-method}
-\alias{countOverlaps,RangesList,RangesList-method}
-\alias{countOverlaps,ViewsList,ViewsList-method}
-\alias{countOverlaps,ViewsList,Vector-method}
-\alias{countOverlaps,Vector,ViewsList-method}
-\alias{countOverlaps,RangedData,RangedData-method}
-\alias{countOverlaps,RangedData,RangesList-method}
-\alias{countOverlaps,RangesList,RangedData-method}
-
-\alias{match,Views,Views-method}
-\alias{match,Views,Vector-method}
-\alias{match,Vector,Views-method}
-\alias{match,RangesList,RangesList-method}
-\alias{match,ViewsList,ViewsList-method}
-\alias{match,ViewsList,Vector-method}
-\alias{match,Vector,ViewsList-method}
-\alias{match,RangedData,RangedData-method}
-\alias{match,RangedData,RangesList-method}
-\alias{match,RangesList,RangedData-method}
-
-\alias{overlapsAny}
-\alias{overlapsAny,Ranges,Ranges-method}
-\alias{overlapsAny,Views,Views-method}
-\alias{overlapsAny,Views,Vector-method}
-\alias{overlapsAny,Vector,Views-method}
-\alias{overlapsAny,RangesList,RangesList-method}
-\alias{overlapsAny,ViewsList,ViewsList-method}
-\alias{overlapsAny,ViewsList,Vector-method}
-\alias{overlapsAny,Vector,ViewsList-method}
-\alias{overlapsAny,RangedData,RangedData-method}
-\alias{overlapsAny,RangedData,RangesList-method}
-\alias{overlapsAny,RangesList,RangedData-method}
-
-\alias{\%over\%}
-\alias{\%within\%}
-
-\alias{\%in\%,Views,Views-method}
-\alias{\%in\%,Views,Vector-method}
-\alias{\%in\%,Vector,Views-method}
-\alias{\%in\%,RangesList,RangesList-method}
-\alias{\%in\%,ViewsList,ViewsList-method}
-\alias{\%in\%,ViewsList,Vector-method}
-\alias{\%in\%,Vector,ViewsList-method}
-\alias{\%in\%,RangedData,RangedData-method}
-\alias{\%in\%,RangedData,RangesList-method}
-\alias{\%in\%,RangesList,RangedData-method}
-
-\alias{subsetByOverlaps}
-\alias{subsetByOverlaps,Vector,Vector-method}
-\alias{subsetByOverlaps,RangedData,RangedData-method}
-\alias{subsetByOverlaps,RangedData,RangesList-method}
-\alias{subsetByOverlaps,RangesList,RangedData-method}
-
-\alias{ranges,Hits-method}
-
-\alias{findMatches,Views,Views-method}
-\alias{findMatches,Views,Vector-method}
-\alias{findMatches,Vector,Views-method}
-\alias{findMatches,RangesList,RangesList-method}
-\alias{findMatches,ViewsList,ViewsList-method}
-\alias{findMatches,ViewsList,Vector-method}
-\alias{findMatches,Vector,ViewsList-method}
-\alias{findMatches,RangedData,RangedData-method}
-\alias{findMatches,RangedData,RangesList-method}
-\alias{findMatches,RangesList,RangedData-method}
-
-\alias{countMatches,Views,Views-method}
-\alias{countMatches,Views,Vector-method}
-\alias{countMatches,Vector,Views-method}
-\alias{countMatches,RangesList,RangesList-method}
-\alias{countMatches,ViewsList,ViewsList-method}
-\alias{countMatches,ViewsList,Vector-method}
-\alias{countMatches,Vector,ViewsList-method}
-\alias{countMatches,RangedData,RangedData-method}
-\alias{countMatches,RangedData,RangesList-method}
-\alias{countMatches,RangesList,RangedData-method}
-
-
-\title{Finding overlapping ranges}
+\title{Finding overlapping ranges in an Interval Forest}
 
 \description{
   Various methods for finding/counting interval overlaps between two
-  "range-based" objects: a query and a subject.
+  partitioned "range-based" objects: a query and a subject, where the subject is
+  stored as an \link{IntervalForest} object.
 
-  NOTE: This man page describes the methods that operate on a query
-  and a subject that are both either a \link{Ranges}, \link{Views},
-  \link{RangesList}, \link{ViewsList}, or \link{RangedData} object.
-  (In addition, if the query is a \link{Ranges} object, the subject
-  can be an \link{IntervalTree} object. And if the subject is a
-  \link{Ranges} object, the query can be an integer vector.)
-
-  See \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GenomicRanges-method}`}
+  See \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}`}
   in the GenomicRanges package for methods that operate on
   \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
-  objects.
+  objects with subjects stored as \link[GenomicRanges]{GIntervalTree} objects which
+  use \link{IntervalForest} objects as the backend.
 }
 
 \usage{
-findOverlaps(query, subject, maxgap=0L, minoverlap=1L,
+findOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
              type=c("any", "start", "end", "within", "equal"),
              select=c("all", "first", "last", "arbitrary"), ...)
 
-countOverlaps(query, subject, maxgap=0L, minoverlap=1L,
+countOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
               type=c("any", "start", "end", "within", "equal"), ...)
 
-overlapsAny(query, subject, maxgap=0L, minoverlap=1L,
+overlapsAny(query, subject, partition, maxgap=0L, minoverlap=1L,
             type=c("any", "start", "end", "within", "equal"), ...)
-query \%over\% subject
-query \%within\% subject
 
-subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
+subsetByOverlaps(query, subject, partition, maxgap=0L, minoverlap=1L,
                  type=c("any", "start", "end", "within", "equal"), ...)
-
-\S4method{ranges}{Hits}(x, query, subject)
 }
 
 \arguments{
-  \item{query, subject}{
-    Each of them can be a \link{Ranges}, \link{Views}, \link{RangesList},
-    \link{ViewsList}, or \link{RangedData} object.
-    In addition, if \code{query} is a \link{Ranges} object, \code{subject}
-    can be an \link{IntervalTree} object.
-    And if \code{subject} is a \link{Ranges} object, \code{query} can
-    be an integer vector to be converted to length-one ranges.
-    If \code{query} is a \link{RangesList} or \link{RangedData},
-    \code{subject} must be a \link{RangesList} or \link{RangedData}.
+  \item{query}{
+    A \link{Ranges} object. This method assumes the \code{query} ranges are partitioned as specified by the \code{partition} argument and overlaps are computed with ranges in \code{subject} in the same partition.
 
-    If both lists have names, each element from the subject is paired
-    with the element from the query with the matching name, if any.
-    Otherwise, elements are paired by position. The overlap is then
-    computed between the pairs as described below.
-
-    If \code{query} is unsorted, it is sorted first, so it is usually
-    better to sort up-front, to avoid a sort with each \code{findOverlaps}
+    If \code{query} is unsorted, it is sorted first (by partition and then by start position), so it is usually better to sort up-front, to avoid a sort with each \code{findOverlaps}
     call.
+  }
+  \item{subject}{
+    An \link{IntervalForest} object.
+  }
 
-    If \code{subject} is omitted, \code{query} is queried against
-    itself. In this case, and only this case, the \code{ignoreSelf}
-    and \code{ignoreRedundant} arguments are allowed. By default,
-    the result will contain hits for each range against itself, and if
-    there is a hit from A to B, there is also a hit for B to A. If
-    \code{ignoreSelf} is \code{TRUE}, all self matches are dropped. If
-    \code{ignoreRedundant} is \code{TRUE}, only one of A->B and B->A
-    is returned.
+  \item{partition}{
+    A \link{factor} stored either as a \code{vector} or \code{Rle} object. This argument partitions the \code{query} ranges such that overlaps are computed with ranges in \code{subject} with the same partition. This is converted to an \code{Rle} internally if necessary, so it is more efficient to pass this as an \code{Rle} object.
   }
   \item{maxgap, minoverlap}{
     Intervals with a separation of \code{maxgap} or less and a minimum
@@ -227,19 +111,18 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
 }
 
 \details{
-  A common type of query that arises when working with intervals is
-  finding which intervals in one set overlap those in another.
+  A common type of query that arises when working with partitioned intervals is
+  finding which intervals in one set overlap those in another. 
 
-  The simplest approach is to call the \code{findOverlaps} function
-  on a \link{Ranges} or other object with range information (aka
-  "range-based object").
+  The simplest approach for finding overlaps is to call the
+  \code{\link{findOverlaps}} function on a partitioned \link{Ranges} object. A canonical example of partitioned ranges are \code{\link[GenomicRanges]{GenomicRanges}} object, where intervals are partitioned by their \code{seqnames}. See the \link[GenomicRanges]{GIntervalTree} to see the use \code{IntervalForest} objects in this case.
 
-  An \link{IntervalTree} object is a derivative of \link{Ranges} and
-  stores its ranges as a tree that is optimized for overlap queries.
+  The \code{IntervalForest} class stores a set of Interval Trees
+  corresponding to intervals that are partitioned into disjoint sets. See the \link{IntervalTree} class for the underlying Interval Tree data structure which stores its ranges as a tree that is optimized for overlap queries.
   Thus, for repeated queries against the same subject, it is more
-  efficient to create an \link{IntervalTree} once for the subject
-  using the \code{\link{IntervalTree}} constructor and then perform
-  the queries against the \link{IntervalTree} instance.
+  efficient to create an \link{IntervalForest} once 
+  using the \code{\link{IntervalForest}} constructor and then perform
+  the queries against the \link{IntervalForest} instance.
 }
 
 \value{
@@ -251,28 +134,12 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
   in \code{query} using the specified \code{findOverlaps} parameters.
 
   \code{overlapsAny} finds the ranges in \code{query} that overlap any
-  of the ranges in \code{subject}. For \link{Ranges} or \link{Views}
-  objects, it returns a logical vector of length equal to the number of
-  ranges in \code{query}. For \link{RangesList}, \link{RangedData}, or
-  \link{ViewsList} objects, it returns a \link{LogicalList} object,
-  where each element of the result corresponds to a space in \code{query}.
-
-  \code{\%over\%} and \code{\%within\%} are convenience wrappers for the
-  2 most common use cases. Currently defined as
-  \code{`\%over\%` <- function(query, subject) overlapsAny(query, subject)}
-  and
-  \code{`\%within\%` <- function(query, subject)
-                        overlapsAny(query, subject, type="within")}.
+  of the ranges in \code{subject}. It returns a logical vector of length equal to the number of
+  ranges in \code{query}. 
 
   \code{subsetByOverlaps} returns the subset of \code{query} that
   has an overlap hit with a range in \code{subject} using the specified
   \code{findOverlaps} parameters.
-
-  \code{ranges(x, query, subject)} returns a \code{Ranges} of the same
-  length as \link{Hits} object \code{x} holding the regions of intersection
-  between the overlapping ranges in objects \code{query} and \code{subject},
-  which should be the same query and subject used in the call to
-  \code{findOverlaps} that generated \code{x}.
 }
 
 \references{
@@ -281,88 +148,90 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
   Communications of the ACM. 26/11/1983. ACM Press. S. 832-843, ISSN 0001-0782
 }
 
-\author{Michael Lawrence}
+\author{Hector Corrada Bravo, Michael Lawrence}
 
 \seealso{
   \itemize{
     \item The \link{Hits} class for representing a set of hits between
           2 vector-like objects.
 
-    \item \link[GenomicRanges]{findOverlaps,GenomicRanges,GenomicRanges-method}
+    \item \link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}
           in the GenomicRanges package for methods that operate on
-          \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
-          objects.
+          \link[GenomicRanges]{GRanges} 
+          objects using \code{IntervalForest} objects for querying.
 
     \item The \code{\link{IntervalTree}} class and constructor.
 
-    \item The \link{Ranges}, \link{Views}, \link{RangesList},
-          \link{ViewsList}, and \link{RangedData} classes.
-
-    \item The \link{IntegerList} and \link{LogicalList} classes.
+    \item The \link{Ranges} class.
   }
 }
 
 \examples{
 query <- IRanges(c(1, 4, 9), c(5, 7, 10))
+qpartition <- factor(c("a","a","b"))
+
 subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
-tree <- IntervalTree(subject)
+spartition <- factor(c("a","a","b"))
+
+forest <- IntervalForest(subject, spartition)
 
 ## ---------------------------------------------------------------------
 ## findOverlaps()
 ## ---------------------------------------------------------------------
 
 ## at most one hit per query
-findOverlaps(query, tree, select = "first")
-findOverlaps(query, tree, select = "last")
-findOverlaps(query, tree, select = "arbitrary")
+findOverlaps(query, forest, partition=qpartition, select = "first")
+findOverlaps(query, forest, partition=qpartition, select = "last")
+findOverlaps(query, forest, partition=qpartition, select = "arbitrary")
 
 ## overlap even if adjacent only
 ## (FIXME: the gap between 2 adjacent ranges should be still considered
 ## 0. So either we have an argument naming problem, or we should modify
 ## the handling of the 'maxgap' argument so that the user would need to
 ## specify maxgap = 0L to obtain the result below.)
-findOverlaps(query, tree, maxgap = 1L)
+findOverlaps(query, forest, partition=qpartition, maxgap = 1L)
 
 ## shortcut
-findOverlaps(query, subject)
-
-query <- IRanges(c(1, 4, 9), c(5, 7, 10))
-subject <- IRanges(c(2, 2), c(5, 4))
-tree <- IntervalTree(subject)
-
-## one Ranges with itself
-findOverlaps(query)
-
-## single points as query
-subject <- IRanges(c(1, 6, 13), c(4, 9, 14))
-findOverlaps(c(3L, 7L, 10L), subject, select = "first")
+findOverlaps(query, forest, partition=qpartition)
 
 ## alternative overlap types
 query <- IRanges(c(1, 5, 3, 4), width=c(2, 2, 4, 6))
-subject <- IRanges(c(1, 3, 5, 6), width=c(4, 4, 5, 4))
+qpartition <- factor(c("a","a","b","b"))
 
-findOverlaps(query, subject, type = "start")
-findOverlaps(query, subject, type = "start", maxgap = 1L)
-findOverlaps(query, subject, type = "end", select = "first")
-ov <- findOverlaps(query, subject, type = "within", maxgap = 1L)
+subject <- IRanges(c(1, 3, 5, 6), width=c(4, 4, 5, 4))
+spartition <- factor(c("a","a","b","b"))
+forest <- IntervalForest(subject, spartition)
+
+findOverlaps(query, forest, partition=qpartition, type = "start")
+findOverlaps(query, forest, partition=qpartition, type = "start", maxgap = 1L)
+findOverlaps(query, forest, partition=qpartition, type = "end", select = "first")
+ov <- findOverlaps(query, forest, partition=qpartition, type = "within", maxgap = 1L)
 ov
 
 ## ---------------------------------------------------------------------
 ## overlapsAny()
 ## ---------------------------------------------------------------------
 
-overlapsAny(query, subject, type="start")
-overlapsAny(query, subject, type="end")
-query \%over\% subject    # same as overlapsAny(query, subject)
-query \%within\% subject  # same as overlapsAny(query, subject,
-                        #                     type="within")
+overlapsAny(query, forest, partition=qpartition, type="start")
+overlapsAny(query, forest, partition=qpartition, type="end")
+
+## ---------------------------------------------------------------------
+## subsetByOverlaps()
+## ---------------------------------------------------------------------
+subsetByOverlaps(query, forest, partition=qpartition)
+
+## ---------------------------------------------------------------------
+## countOverlaps()
+## ---------------------------------------------------------------------
+countOverlaps(query, forest, partition=qpartition)
 
 ## ---------------------------------------------------------------------
 ## "ranges" METHOD FOR Hits OBJECTS
 ## ---------------------------------------------------------------------
 
 ## extract the regions of intersection between the overlapping ranges
-ranges(ov, query, subject)
+ranges(ov, query, forest)
 }
+
 
 \keyword{methods}

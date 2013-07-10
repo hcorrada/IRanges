@@ -409,10 +409,10 @@ setGeneric("countOverlaps", signature = c("query", "subject"),
 
 setMethod("countOverlaps", c("ANY", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"))
+             type = c("any", "start", "end", "within", "equal"), ...)
     {
         counts <- queryHits(findOverlaps(query, subject, maxgap = maxgap,
-                                         minoverlap = minoverlap, type = type))
+                                         minoverlap = minoverlap, type = type, ...))
         structure(tabulate(counts, length(query)), names=names(query))
 
     }
@@ -650,7 +650,7 @@ setMethod("overlapsAny", c("Ranges", "Ranges"),
     {
         !is.na(findOverlaps(query, subject, maxgap=maxgap,
                             minoverlap=minoverlap, type=type,
-                            select="arbitrary"))
+                            select="arbitrary", ...))
     }
 )
 
@@ -800,12 +800,12 @@ setGeneric("subsetByOverlaps", signature = c("query", "subject"),
 
 setMethod("subsetByOverlaps", c("Vector", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"))
+             type = c("any", "start", "end", "within", "equal"), ...)
     {
         type <- match.arg(type)
         query[!is.na(findOverlaps(query, subject, maxgap = maxgap,
                                   minoverlap = minoverlap, type = type,
-                                  select = "arbitrary"))]
+                                  select = "arbitrary",...))]
     }
 )
 
