@@ -13,7 +13,7 @@
 setGeneric("findOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
              type = c("any", "start", "end", "within", "equal"),
-             select = c("all", "first", "last", "arbitrary"), ...)
+             select = c("all", "first", "last", "arbitrary"), partition=NULL, ...)
         standardGeneric("findOverlaps")
 )
 
@@ -158,9 +158,9 @@ setMethod("findOverlaps", c("Ranges", "IntervalTree"),
 
 ### findOverlaps method for IntervalForest
 setMethod("findOverlaps", c("Ranges", "IntervalForest"),
-          function(query, subject, partition, maxgap = 0L, minoverlap = 1L,
+          function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
-                   select = c("all", "first", "last", "arbitrary"))
+                   select = c("all", "first", "last", "arbitrary"), partition)
           {
             # verify inputs
             if (!isSingleNumber(maxgap) || maxgap < 0L)
@@ -237,6 +237,20 @@ setMethod("findOverlaps", c("Vector", "missing"),
                                    type = type, select = "all")
             processSelfMatching(result, select, ignoreSelf, ignoreRedundant)
           })
+
+setMethod("findOverlaps", c("IntervalForest", "missing"),
+          function(query, subject, maxgap = 0L, minoverlap = 1L,
+                   type = c("any", "start", "end", "within", "equal"),
+                   select = c("all", "first", "last", "arbitrary"), 
+                   ignoreSelf = FALSE, ignoreRedundant = FALSE)
+          {
+            select <- match.arg(select)
+            result <- findOverlaps(ranges(query), query,
+                                   maxgap = maxgap, minoverlap = minoverlap,
+                                   type = type, select = "all", partition=query@partition)
+            processSelfMatching(result, select, ignoreSelf, ignoreRedundant)
+          })
+
 
 setMethod("findOverlaps", c("integer", "Ranges"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
@@ -403,16 +417,17 @@ setMethod("findOverlaps", c("RangesList", "RangedData"),
 
 setGeneric("countOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), ...)
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
         standardGeneric("countOverlaps")
 )
 
 setMethod("countOverlaps", c("ANY", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"))
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
     {
         counts <- queryHits(findOverlaps(query, subject, maxgap = maxgap,
-                                         minoverlap = minoverlap, type = type))
+                                         minoverlap = minoverlap, type = type, 
+                                         partition = partition, ...))
         structure(tabulate(counts, length(query)), names=names(query))
 
     }
@@ -640,17 +655,17 @@ setMethod("match", c("RangesList", "RangedData"),
 ### Same args and signature as countOverlaps() and subsetByOverlaps().
 setGeneric("overlapsAny", signature=c("query", "subject"),
     function(query, subject, maxgap=0L, minoverlap=1L,
-             type=c("any", "start", "end", "within", "equal"), ...)
+             type=c("any", "start", "end", "within", "equal"), partition = NULL, ...)
         standardGeneric("overlapsAny")
 )
 
 setMethod("overlapsAny", c("Ranges", "Ranges"),
     function(query, subject, maxgap=0L, minoverlap=1L,
-             type=c("any", "start", "end", "within", "equal"), ...)
+             type=c("any", "start", "end", "within", "equal"), partition=NULL, ...)
     {
         !is.na(findOverlaps(query, subject, maxgap=maxgap,
                             minoverlap=minoverlap, type=type,
-                            select="arbitrary"))
+                            select="arbitrary", partition=partition, ...))
     }
 )
 
@@ -795,18 +810,18 @@ setMethods("%in%", .signatures, `.%in%.definition`)
 
 setGeneric("subsetByOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), ...)
+             type = c("any", "start", "end", "within", "equal"), partition = NULL,  ...)
         standardGeneric("subsetByOverlaps")
 )
 
 setMethod("subsetByOverlaps", c("Vector", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"))
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
     {
         type <- match.arg(type)
         query[!is.na(findOverlaps(query, subject, maxgap = maxgap,
                                   minoverlap = minoverlap, type = type,
-                                  select = "arbitrary"))]
+                                  select = "arbitrary", partition = partition, ...))]
     }
 )
 
