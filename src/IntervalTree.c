@@ -381,6 +381,7 @@ SEXP _IntegerIntervalForest_overlap(IntervalForest *forest, SEXP r_ranges, SEXP 
   int *r_elt; /* result vector pointer */
 
   int m; /* query counter */
+  int k; /* helper counter */
 
   cachedIRanges cached_r_ranges = _cache_IRanges(r_ranges);
   int nranges = _get_cachedIRanges_length(&cached_r_ranges);
@@ -407,8 +408,10 @@ SEXP _IntegerIntervalForest_overlap(IntervalForest *forest, SEXP r_ranges, SEXP 
         _IntegerIntervalTree_overlapHelper(tree, cached_r_ranges, *p_partitionLengths, 
                                            m, &r_elt, find_type, result_ints);
     } else {
-      *(r_elt+1) = *r_elt;
-      r_elt++;
+      for (k=0; k<*p_partitionLengths; k++) {
+        *(r_elt+1) = *r_elt;
+        r_elt++;
+      }
     }
     m += *p_partitionLengths;
     r_elt--; /* need to move back after overlapHelper call */

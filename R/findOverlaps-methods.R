@@ -22,7 +22,8 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
 ### by the IntervalTree and IntervalForest versions of findOverlaps
 ###
 ### pre-process query (sort and adjust) and partition (if not NULL)
-.preProcess_findOverlaps_query <- function(query, maxgap, minoverlap, partition=NULL) {
+.preProcess_findOverlaps_query <- function(query, maxgap, minoverlap, 
+                                            partition=NULL, slevels=NULL) {
   res <- list()  
   query <- as(query, "IRanges")
   query_ord <- NULL
@@ -43,17 +44,33 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
       query_ord <- seq_len(length(query))
     }
   } else {
-    # query and partition must be sorted by partition then start
+    # query and partition must be sorted by partition (according to 
+    # subject partition levels) then query start
     query_ord <- seq_len(length(query))
+
+    # find query ranges with no matching partition level in subject
+    m <- match(partition, slevels)
+    naind <- is.na(m)
+
+    if (any(naind))
+      partition <- partition[!naind]
+
     isSorted <- !isNotSorted(runValue(partition))
   
     partition_split <- splitRanges(partition)
     last <- 0
     for (i in seq_along(partition_split)) {
       ind <- partition_split[[i]]
+      curPartitionLength <- sum(width(ind))
+
+      # empty partition or no matching partition in subject
+      if (curPartitionLength==0) {
+        isSorted <- FALSE
+        next
+      }
+
       curStarts <- seqselect(start(query), ind)
       ind <- as.integer(ind)
-      curPartitionLength <- length(ind)
 
       if (isNotSorted(curStarts)) {
         ind <- ind[order(curStarts)]
@@ -62,9 +79,18 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
       query_ord[last+seq_len(curPartitionLength)] <- ind
       last <- last + curPartitionLength
     }
+    if (any(naind) && last>0) {
+      # stick query ranges with no matching levels 
+      # in the subject to the end
+        query_ord[seq(len=last)] <- which(!naind)[query_ord[seq(len=last)]]
+        query_ord[-seq(len=last)] <- which(naind)
+    }
     if (!isSorted) {
       query <- query[query_ord]
-      partition <- partition[query_ord]
+      partition <- res$unsortedPartition[query_ord]
+    }
+    if (any(naind) && last>0) {
+      partition[-seq(len=last)] <- NA
     }
   }
   res$query <- query
@@ -193,7 +219,7 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
               select <- "all"
 
             # preprocess query
-            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap, partition)
+            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap, partition, levels(subject))
             origQuery <- preprocRes$origQuery
             unsortedQuery <- preprocRes$unsortedQuery
             query <- preprocRes$query
