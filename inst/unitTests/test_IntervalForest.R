@@ -262,3 +262,12 @@ test_IntervalForest_length <- function() {
   tree <- IntervalForest(ranges, factor(c("a","a","b")))
   checkIdentical(length(tree), length(ranges))
 }
+
+test_IntervalForest_shift <- function() {
+  ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
+  partition <- Rle(factor(c("a","a","b")))
+  tree <- IntervalForest(ranges, partition)
+  tree <- shift(tree, 10)
+  checkIdentical(as(tree, "IRanges"), shift(ranges, 10))
+  checkIdentical(tree@partition, partition)
+}

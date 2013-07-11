@@ -116,7 +116,7 @@
   See \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GenomicRanges-method}`}
   in the GenomicRanges package for methods that operate on
   \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
-  objects. See also the \code{?`\link[GenomicRanges]{GIntervalTree}} class and the
+  objects. See also the \code{?`\link[GenomicRanges]{GIntervalTree}`} class and the
   \code{?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}`} method 
   for finding overlaps with persistent \link{IntervalForest} objects.
 }
@@ -146,7 +146,7 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
     \link{ViewsList}, or \link{RangedData} object.
     In addition, if \code{query} is a \link{Ranges} object, \code{subject}
     can be an \link{IntervalTree} object or a \link{IntervalForest} (with 
-    non-NULL \code{partition} argument}). And if \code{subject} is a \link{Ranges} 
+    non-NULL \code{partition} argument). And if \code{subject} is a \link{Ranges} 
     object, \code{query} can be an integer vector to be converted to length-one ranges.
     If \code{query} is a \link{RangesList} or \link{RangedData},
     \code{subject} must be a \link{RangesList} or \link{RangedData}.
@@ -216,7 +216,7 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
     A \link{factor} stored either as a \code{vector} or \code{Rle} object, only 
     used when \code{subject} is an \link{IntervalForest} object. This argument partitions 
     the \code{query} ranges such that overlaps are computed with \code{subject} ranges in 
-    the same partition. This argument is converted to an \codeRle} internally if necessary, 
+    the same partition. This argument is converted to an \code{ Rle} internally if necessary, 
     so it is more efficient to pass this as an \code{Rle} object.
   }
   \item{...}{
@@ -305,7 +305,7 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
           \link[GenomicRanges]{GRanges} or \link[GenomicRanges]{GRangesList}
           objects.
 
-    \item ?`\link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method}` in
+    \item \link[GenomicRanges]{findOverlaps,GenomicRanges,GIntervalTree-method} in
           the GenomicRanges package for methods that use \link{IntervalForest} objects
           to find overlaps.
 
@@ -407,6 +407,9 @@ forest <- IntervalForest(subject, spartition)
 
 overlapsAny(query, forest, partition=qpartition, type="start")
 overlapsAny(query, forest, partition=qpartition, type="end")
+subsetByOverlaps(query, forest, partition=qpartition)
+countOverlaps(query, forest, partition=qpartition)
+
 }
 
 \keyword{methods}

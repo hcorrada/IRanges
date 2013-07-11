@@ -56,6 +56,16 @@ setMethod("[", "IntervalForest",
             newPartition <- callGeneric(x@partition, i=i, ...)
             IntervalForest(newRanges, newPartition)
           })
+
+### - - - -
+### updating
+### this allows support for shift, narrow, etc. methods
+### - - - - 
+
+setMethod("update", "IntervalForest",
+    function(object, ...) 
+        IntervalForest(update(as(object, "IRanges"), ...), object@partition))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Low-level utilities
 ###

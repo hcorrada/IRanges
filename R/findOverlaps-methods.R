@@ -417,16 +417,17 @@ setMethod("findOverlaps", c("RangesList", "RangedData"),
 
 setGeneric("countOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), partition = NULL,...)
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
         standardGeneric("countOverlaps")
 )
 
 setMethod("countOverlaps", c("ANY", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), ...)
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
     {
         counts <- queryHits(findOverlaps(query, subject, maxgap = maxgap,
-                                         minoverlap = minoverlap, type = type, ...))
+                                         minoverlap = minoverlap, type = type, 
+                                         partition = partition, ...))
         structure(tabulate(counts, length(query)), names=names(query))
 
     }
@@ -660,11 +661,11 @@ setGeneric("overlapsAny", signature=c("query", "subject"),
 
 setMethod("overlapsAny", c("Ranges", "Ranges"),
     function(query, subject, maxgap=0L, minoverlap=1L,
-             type=c("any", "start", "end", "within", "equal"), ...)
+             type=c("any", "start", "end", "within", "equal"), partition=NULL, ...)
     {
         !is.na(findOverlaps(query, subject, maxgap=maxgap,
                             minoverlap=minoverlap, type=type,
-                            select="arbitrary", ...))
+                            select="arbitrary", partition=partition, ...))
     }
 )
 
@@ -814,12 +815,12 @@ setGeneric("subsetByOverlaps", signature = c("query", "subject"),
 
 setMethod("subsetByOverlaps", c("Vector", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), ...)
+             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
     {
         type <- match.arg(type)
         query[!is.na(findOverlaps(query, subject, maxgap = maxgap,
                                   minoverlap = minoverlap, type = type,
-                                  select = "arbitrary",...))]
+                                  select = "arbitrary", partition = partition, ...))]
     }
 )
 
