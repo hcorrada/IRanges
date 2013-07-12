@@ -7,6 +7,36 @@ setClass("IntervalForest",
          contains = "Ranges")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Validity
+###
+.valid.IntervalForest.length <- function(x) {
+  n <- .Call2("IntegerIntervalForest_length", x@ptr, PACKAGE="IRanges")
+  if (length(x@partition) != n)
+    return("slot lengths are not all equal")
+  NULL
+}
+
+.valid.IntervalForest.mode <- function(x) {
+  if (x@mode != "integer") 
+    return("mode is not 'integer'")
+  NULL
+}
+
+.valid.IntervalForest.partition <- function(x) {
+  if (!is.factor(runValue(x@partition)))
+    return("partition is not a factor")
+  NULL
+}
+
+.valid.IntervalForest <- function(x) {
+  c(.valid.IntervalForest.length(x),
+    .valid.IntervalForest.mode(x),
+    .valid.IntervalForest.partition(x))
+}
+
+setValidity2("IntervalForest", .valid.IntervalForest)
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
 
@@ -36,7 +66,6 @@ IntervalForest <- function(ranges, partition) {
   
   
   npartitions <- nlevels(partition)
-  levels <- levels(partition)
   partitionIndices <- as.integer(partition)
   
   ptr <- .Call2("IntegerIntervalForest_new", ranges, partitionIndices, npartitions, PACKAGE="IRanges")

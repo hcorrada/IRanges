@@ -229,6 +229,15 @@ test_IntervalForest_findOverlaps <- function() {
   ## 'equal'
   result <- findOverlaps(query, tree, type = "equal", partition=qpartition)
   checkOverlap(result, 3, 2, 4, 4)  
+
+  ## self matching
+  subject <- IRanges(c(2, 2, 6, 6, 6), c(5, 5, 7, 8, 7))  
+  spartition <- factor(c("a","a","b","b","b"))
+  
+  tree <- IntervalForest(subject, spartition)
+  result <- findOverlaps(tree)
+  checkOverlap(result, c(1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5), 
+                       c(1, 2, 1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5), 5, 5)
 # 
 #   checkException(findOverlaps(query, NULL), silent = TRUE)
 #   checkException(findOverlaps(NULL, query), silent = TRUE)

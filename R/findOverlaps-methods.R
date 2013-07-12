@@ -241,6 +241,16 @@ setMethod("findOverlaps", c("Ranges", "IntervalForest"),
             .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)            
           })
 
+setMethod("findOverlaps", c("IntervalForest", "IntervalForest"),
+          function(query, subject, maxgap = 0L, minoverlap = 1L,
+                   type = c("any", "start", "end", "within", "equal"),
+                   select = c("all", "first", "last", "arbitrary"))
+          {
+            findOverlaps(as(query, "IRanges"), subject, maxgap = maxgap,
+                         minoverlap = minoverlap, type = match.arg(type),
+                         select = match.arg(select), partition = query@partition)
+          })
+
 setMethod("findOverlaps", c("Ranges", "Ranges"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
@@ -263,20 +273,6 @@ setMethod("findOverlaps", c("Vector", "missing"),
                                    type = type, select = "all")
             processSelfMatching(result, select, ignoreSelf, ignoreRedundant)
           })
-
-setMethod("findOverlaps", c("IntervalForest", "missing"),
-          function(query, subject, maxgap = 0L, minoverlap = 1L,
-                   type = c("any", "start", "end", "within", "equal"),
-                   select = c("all", "first", "last", "arbitrary"), 
-                   ignoreSelf = FALSE, ignoreRedundant = FALSE)
-          {
-            select <- match.arg(select)
-            result <- findOverlaps(ranges(query), query,
-                                   maxgap = maxgap, minoverlap = minoverlap,
-                                   type = type, select = "all", partition=query@partition)
-            processSelfMatching(result, select, ignoreSelf, ignoreRedundant)
-          })
-
 
 setMethod("findOverlaps", c("integer", "Ranges"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
