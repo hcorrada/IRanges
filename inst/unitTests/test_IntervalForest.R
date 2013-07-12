@@ -1,39 +1,43 @@
-test_IntervalForest_construction <- function() {
+test_IntervalForest_construction <- function() {  
   query <- IRanges(c(1, 3, 9), c(5, 7, 10))
   qpartition <- factor(c("a","a","b"))
-  
+  query <- split(query, qpartition)
+
   subject <- IRanges(c(2, 10), c(2, 12))
   spartition <- factor(c("a","b"))
+  subject <- split(subject, spartition)
+
+  forest <- IntervalForest(subject)
+  checkTrue(validObject(forest))
+  checkIdentical(length(forest), 2L);
+  checkIdentical(names(forest), c("a","b"))
+  checkIdentical(sum(elementLengths(forest)), 2L)
   
-  tree <- IntervalForest(subject, spartition)
-  checkTrue(validObject(tree))
-  checkIdentical(length(tree), 2L);
-  checkIdentical(levels(tree), c("a","b"))
-  
-  tree <- IntervalForest(IRanges(), factor())
-  checkTrue(validObject(tree))
+  forest <- IntervalForest(IRangesList())
+  checkTrue(validObject(forest))
 
-  tree <- IntervalForest(IRanges(1, 0), factor(c("a")))
-  checkIdentical(start(tree), 1L)
-  checkIdentical(levels(tree), c("a"))
-  checkTrue(validObject(tree))
+  forest <- IntervalForest(IRangesList(a=IRanges(1, 0)))
+  checkIdentical(as.list(start(forest)), list(a=1L))
+  checkIdentical(names(forest), c("a"))
+  checkTrue(validObject(forest))
 
-  tree <- IntervalForest(IRanges(c(1, 1), c(1, 0)), factor(c("a","b")))
-  checkIdentical(width(tree), c(1L, 0L))
-  checkIdentical(levels(tree), c("a","b"))
-  checkTrue(validObject(tree))
+  forest <- IntervalForest(split(IRanges(c(1, 1), c(1, 0)), factor(c("a","b"))))
+  checkIdentical(as.list(width(forest)), list(a=1L, b=0L))
+  checkIdentical(names(forest), c("a","b"))
+  checkTrue(validObject(forest))
 
-  tree <- IntervalForest(IRanges(1:10,width=1), factor(rep("a",10)))
-  checkIdentical(start(tree), as.integer(1:10))
-  checkIdentical(width(tree), rep(1L,10))
-  checkTrue(validObject(tree))
+  forest <- IntervalForest(IRangesList(a=IRanges(1:10,width=1)))
+  checkIdentical(as.list(start(forest)), list(a=as.integer(1:10)))
+  checkIdentical(as.list(width(forest)), list(a=rep(1L,10)))
+  checkTrue(validObject(forest))
   
   checkException(IntervalForest(), silent = TRUE)
-  checkException(IntervalForest(subject, query, qpartition), silent = TRUE)
+  checkException(IntervalForest(subject, query), silent = TRUE)
   checkException(IntervalForest(NULL, NULL), silent = TRUE)
 }
 
 test_IntervalForest_findOverlaps <- function() {
+  DEACTIVATED()
   ## a .....
   ## b    ....
   ## a        ..
@@ -243,20 +247,22 @@ test_IntervalForest_findOverlaps <- function() {
 #   checkException(findOverlaps(NULL, query), silent = TRUE)
 }
 
-test_IntervalForest_asRanges <- function() {
+test_IntervalForest_asRangesList <- function() {
   ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
   partition <- factor(c("a","b","a"))
-  
-  tree <- IntervalForest(ranges, partition)
-  checkIdentical(as(tree, "IRanges"), ranges)
+  rl <- split(ranges, partition)
+  forest <- IntervalForest(rl)
+  checkIdentical(as(forest, "CompressedIRangesList"), rl)
   
   ranges <- IRanges()
   partition <- factor()
-  tree <- IntervalForest(ranges, partition)
-  checkIdentical(as(tree, "IRanges"), ranges)
+  rl <- split(ranges,partition)
+  tree <- IntervalForest(rl)
+  checkIdentical(as(tree, "CompressedIRangesList"), rl)
 }
 
 test_IntervalForest_subset <- function() {
+  DEACTIVATED()
   ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
   partition <- Rle(factor(c("a","b","a")))
   
@@ -271,17 +277,187 @@ test_IntervalForest_subset <- function() {
   checkIdentical(subtree@partition, subpartition)
 }
 
-test_IntervalForest_length <- function() {
-  ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  tree <- IntervalForest(ranges, factor(c("a","a","b")))
-  checkIdentical(length(tree), length(ranges))
+test_IntervalForest_range <- function() {
+  compress=TRUE
+    rl1 <- IntervalForest(IRangesList(a = IRanges(c(1,2),c(4,3)), b = IRanges(c(4,6),c(10,7)),
+                       compress = compress))
+    rl2 <- IRangesList(c = IRanges(c(0,2),c(4,5)), a = IRanges(c(4,5),c(6,7)),
+                       compress = compress)
+    ans <- IRangesList(a = IRanges(1,7), b = IRanges(4,10), c = IRanges(0,5),
+                       compress = compress)
+    checkIdentical(as(range(rl1, rl2), "CompressedIRangesList"), ans)
+    names(rl2) <- NULL
+    ans <- IRangesList(IRanges(0,5), IRanges(4,10), compress = compress)
+    checkIdentical(as(range(rl1, rl2), "CompressedIRangesList"), ans)
 }
 
-test_IntervalForest_shift <- function() {
-  ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  partition <- Rle(factor(c("a","a","b")))
-  tree <- IntervalForest(ranges, partition)
-  tree <- shift(tree, 10)
-  checkIdentical(as(tree, "IRanges"), shift(ranges, 10))
-  checkIdentical(tree@partition, partition)
+test_IntervalForest_reduce <- function() {
+  range1 <- IRanges(start=c(1,2,3), end=c(5,2,8))
+  range2 <- IRanges(start=c(15,45,20,1), end=c(15,100,80,5))
+  range3 <- IRanges(start=c(3,-2,6,7,-10,-2,3), width=c(1,0,0,0,0,8,0))
+  range4 <- IRanges()
+  collection <- IntervalForest(IRangesList(one=range1,
+                              range2,
+                              range3,
+                              range4,
+                              compress=TRUE))
+    for (with.mapping in c(FALSE, TRUE)) {
+      for (drop.empty.ranges in c(FALSE, TRUE)) {
+        if (!drop.empty.ranges || with.mapping) {
+          checkException( current <- reduce(collection, drop.empty.ranges=drop.empty.ranges,
+                                      with.mapping=with.mapping), silent=TRUE)
+      
+        } else {
+          current <- reduce(collection, drop.empty.ranges=drop.empty.ranges,
+                                      with.mapping=with.mapping)
+      
+          target <- IRangesList(one=reduce(range1,
+                                         drop.empty.ranges=drop.empty.ranges,
+                                         with.mapping=with.mapping),
+                              reduce(range2,
+                                     drop.empty.ranges=drop.empty.ranges,
+                                     with.mapping=with.mapping),
+                              reduce(range3,
+                                     drop.empty.ranges=drop.empty.ranges,
+                                     with.mapping=with.mapping),
+                              reduce(range4,
+                                     drop.empty.ranges=drop.empty.ranges,
+                                     with.mapping=with.mapping),
+                              compress=TRUE)
+          checkIdentical(target, as(current,"CompressedIRangesList"))
+      }
+    }
+  }
+}
+
+test_IntervalForest_narrow <- function() {
+  range1 <- IRanges(start=c(2,5), end=c(3,7))
+  range2 <- IRanges(start=1, end=3)
+  collection <- IntervalForest(IRangesList(range1, range2, compress = TRUE))
+  checkIdentical(as(narrow(collection, start=1, end=2),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, 5), c(3, 6)), IRanges(1, 2),
+                               compress = TRUE))
+  checkException(narrow(collection, start=10, end=20), silent = TRUE)
+}
+
+test_IntervalForest_flank <- function() {
+  range1 <- IRanges(start=c(2,5), end=c(3,7))
+  range2 <- IRanges(start=1, end=3)
+  collection <- IRangesList(range1, range2, compress = TRUE)
+  checkIdentical(as(flank(collection, 2),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(0, 3), c(1, 4)), IRanges(-1, 0),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, 2, FALSE),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(4, 8), c(5, 9)), IRanges(4, 5),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, 2, LogicalList(c(FALSE, TRUE), FALSE)),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(4, 3), c(5, 4)), IRanges(4, 5),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, IntegerList(c(2, -2), 2)),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(0, 5), c(1, 6)), IRanges(-1, 0),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, 2, both = TRUE),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(0, 3), c(3, 6)), IRanges(-1, 2),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, 2, FALSE, TRUE),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, 6), c(5, 9)), IRanges(2, 5),
+                               compress = TRUE))
+  checkIdentical(as(flank(collection, -2, FALSE, TRUE),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, 6), c(5, 9)),
+                               IRanges(2, 5), compress = TRUE))
+  checkException(flank(collection, 2, both = c(TRUE, FALSE, TRUE)),
+                   silent = TRUE) # not vectorized
+  checkException(flank(collection, 2, LogicalList(c(FALSE, TRUE), NA)),
+                   silent = TRUE)
+  checkException(flank(collection, NA), silent = TRUE)
+}
+
+test_IntervalForest_promoters <- function() {
+  rl <- IntervalForest(IRangesList("A"=IRanges(5:7, width=1), "B"=IRanges(10:12, width=5)))
+  current <- promoters(rl, 2, 0) 
+  checkIdentical(names(current), names(rl))
+  checkIdentical(unique(unlist(width(current))), 2L)
+}
+
+test_IntervalForest_resize <- function() {
+  range1 <- IRanges(start=c(2,5), end=c(3,7))
+  range2 <- IRanges(start=1, end=3)
+    collection <- IRangesList(range1, range2, compress = TRUE)
+    checkIdentical(as(resize(collection, width=10),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, 5), width=10), IRanges(1, width=10),
+                               compress = TRUE))
+    checkIdentical(as(resize(collection, width=10, fix="end"),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(-6, -2), width=10), IRanges(-6, width=10),
+                               compress = TRUE))
+    checkIdentical(as(resize(collection, width=10, fix="center"),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(-2, 1), width=10), IRanges(-3, width=10),
+                               compress = TRUE))
+    checkIdentical(as(resize(collection, width=10,
+                          fix=CharacterList(c("start", "end"), "center")),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, -2), width=10), IRanges(-3, width=10),
+                               compress = TRUE))
+    checkException(resize(collection, -1), silent = TRUE)
+}
+
+test_IntervalForest_restrict <- function() {
+  range1 <- IRanges(start=c(2,5), end=c(3,7))
+  range2 <- IRanges(start=1, end=3)
+    collection <- IntervalForest(IRangesList(range1, range2, compress = TRUE))
+    checkIdentical(as(restrict(collection, start=2, end=5),"CompressedIRangesList"),
+                   IRangesList(IRanges(c(2, 5), c(3, 5)), IRanges(2, 3),
+                               compress = TRUE))
+    checkIdentical(as(restrict(collection, start=1, end=2),"CompressedIRangesList"),
+                   IRangesList(IRanges(2, 2), IRanges(1, 2),
+                               compress = TRUE))
+    checkException(restrict(collection, start=1, end=2, keep.all.ranges=TRUE), silent=TRUE)
+}                  
+
+
+
+test_IntervalForest_gaps <- function() {
+  range1 <- IRanges(start=c(1,2,3), end=c(5,2,8))
+  range2 <- IRanges(start=c(15,45,20,1), end=c(15,100,80,5))
+  for (compress in c(TRUE)) {
+    collection <- IntervalForest(IRangesList(one = range1, range2, compress = compress))
+    checkIdentical(as(gaps(collection),"CompressedIRangesList"),
+                   IRangesList(one = gaps(range1), gaps(range2),
+                               compress = compress))
+  }
+}
+
+
+test_IntervalForest_disjoin <- function()
+{
+  f <- function(x) as(x, "CompressedIRangesList")
+
+    r0 <- IRanges(10, 20)
+    checkTrue(validObject(disjoin(IntervalForest(IRangesList()))))
+    ## unnamed; incl. 0-length
+    irl <- IntervalForest(IRangesList(IRanges()))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    irl <- IntervalForest(IRangesList(r0, IRanges(), r0))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    irl <- IntervalForest(IRangesList(r0, IRanges(), IRanges(), r0))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    ## named; incl. 0-length
+    irl <- IntervalForest(IRangesList(a=IRanges()))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    irl <- IntervalForest(IRangesList(a=r0, b=IRanges(), c=r0))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    irl <- IntervalForest(IRangesList(a=r0, b=IRanges(), c=IRanges(), d=r0))
+    checkIdentical(f(irl), f(disjoin(irl)))
+    ## no interference between separate elements
+    r0 <- IRanges(10, c(15, 20))
+    dr0 <- disjoin(r0)
+    irl <- IntervalForest(IRangesList(r0, r0))
+    checkIdentical(IRangesList(dr0, dr0), f(disjoin(irl)))
+    irl <- IntervalForest(IRangesList(r0, IRanges(), r0))
+    checkIdentical(IRangesList(dr0, IRanges(), dr0), f(disjoin(irl)))
+    ## 0-width
+    ## 1-width
+    r0 <- IRanges(c(1, 10), 10)
+    irl <- IntervalForest(IRangesList(r0, IRanges()))
+    checkIdentical(disjoin(r0), f(disjoin(irl))[[1]])
+    irl <- IntervalForest(IRangesList(IRanges(), r0))
+    checkIdentical(disjoin(r0), f(disjoin(irl))[[2]])
 }

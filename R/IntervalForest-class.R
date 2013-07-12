@@ -2,18 +2,19 @@
 ### IntervalForest objects
 ### -------------------------------------------------------------------------
 
-setClass("IntervalForest",
-         representation(ptr = "externalptr", mode = "character", partition="Rle"),
-         contains = "Ranges")
+setClass("IntervalForest", 
+         representation(ptr="externalptr", mode="character", partitioning="PartitioningByEnd"),
+         contains = c("RangesList"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Validity
 ###
-.valid.IntervalForest.length <- function(x) {
-  n <- .Call2("IntegerIntervalForest_length", x@ptr, PACKAGE="IRanges")
-  if (length(x@partition) != n)
-    return("slot lengths are not all equal")
-  NULL
+.valid.IntervalForest.partitioning <- function(x)
+{
+    dataLength <- .IntervalForestCall(x,"nobj",check=FALSE)
+    if (nobj(x@partitioning) != dataLength)
+        "improper partitioning"
+    else NULL
 }
 
 .valid.IntervalForest.mode <- function(x) {
@@ -22,56 +23,89 @@ setClass("IntervalForest",
   NULL
 }
 
-.valid.IntervalForest.partition <- function(x) {
-  if (!is.factor(runValue(x@partition)))
-    return("partition is not a factor")
-  NULL
-}
-
 .valid.IntervalForest <- function(x) {
-  c(.valid.IntervalForest.length(x),
-    .valid.IntervalForest.mode(x),
-    .valid.IntervalForest.partition(x))
+  c(.valid.IntervalForest.partitioning(x),
+    .valid.IntervalForest.mode(x))
 }
 
 setValidity2("IntervalForest", .valid.IntervalForest)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Accessors
-###
-
-setMethod("length", "IntervalForest", function(x) .IntervalForestCall(x, "length"))
-setMethod("start", "IntervalForest", function(x) .IntervalForestCall(x, "start"))
-setMethod("end", "IntervalForest", function(x) .IntervalForestCall(x, "end"))
-setMethod("levels", "IntervalForest", function(x) levels(x@partition))
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
 ###
 
-IntervalForest <- function(ranges, partition) {
-  if (is(partition, "Rle")) {
-    if (!is.factor(runValue(partition))) {
-      stop("'partition' must be a 'factor' Rle or 'factor'")
-    }
-  } else {
-    if (!is.factor(partition)) {
-      stop("'partition' must be a 'factor' Rle or 'factor'")
-    }
-    partition <- Rle(partition)
+IntervalForest <- function(x) {
+  if (!is(x, "IRangesList")) {
+    stop("'x' must be an 'IRangesList' object")
   }
-  
-  validObject(ranges)
-  validObject(partition)
-  
-  
-  npartitions <- nlevels(partition)
-  partitionIndices <- as.integer(partition)
-  
-  ptr <- .Call2("IntegerIntervalForest_new", ranges, partitionIndices, npartitions, PACKAGE="IRanges")
-  new2("IntervalForest", ptr = ptr, mode="integer", partition=partition, check=FALSE)
+  if (elementType(x) != "IRanges") {
+    stop("'elementType(x)' must be of class 'IRanges'")
+  }
+  as(x, "IntervalForest")
 }
 
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Coercion
+###
+setAs("IntervalForest", "CompressedIRangesList",
+  function(from) {
+    new2("CompressedIRangesList",
+         unlistData=.IntervalForestCall(from, "asIRanges"),
+         partitioning=from@partitioning,
+         elementType="IRanges",
+         check=FALSE)
+})
+
+setAs("CompressedIRangesList", "IntervalForest",
+  function(from) {
+  validObject(from)
+    
+  npartitions <- length(from)
+  partitionLengths <- elementLengths(from)
+  
+  ptr <- .Call2("IntegerIntervalForest_new", from@unlistData, partitionLengths, npartitions, PACKAGE="IRanges")
+  new2("IntervalForest", 
+       ptr = ptr, 
+       mode="integer", 
+       partitioning=from@partitioning, 
+       check=FALSE)
+})
+
+setAs("RangesList", "IntervalForest", function(from) as(as(from, "CompressedIRangesList"), "IntervalForest"))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Accessors
+###
+
+setMethod("start", "IntervalForest",
+          function(x)
+          new2("CompressedIntegerList",
+               unlistData = .IntervalForestCall(x, "start"),
+               partitioning = x@partitioning, check=FALSE))
+setMethod("end", "IntervalForest",
+          function(x)
+          new2("CompressedIntegerList",
+               unlistData = .IntervalForestCall(x, "end"),
+               partitioning = x@partitioning, check=FALSE))
+setMethod("width", "IntervalForest",
+          function(x)
+          new2("CompressedIntegerList",
+               unlistData = .IntervalForestCall(x, "end")-.IntervalForestCall(x, "start")+1L,
+               partitioning = x@partitioning, check=FALSE))
+
+setMethod("elementLengths", "IntervalForest",
+    function(x)
+    {
+        ans <- elementLengths(x@partitioning)
+        names(ans) <- names(x)
+        ans
+    }
+)
+
+setMethod("length", "IntervalForest", function(x) length(x@partitioning))
+
+setMethod("names", "IntervalForest", function(x) names(x@partitioning))
 
 ### - - - - 
 ### Subsetting
@@ -81,26 +115,29 @@ setMethod("[", "IntervalForest",
           function(x, i, j, ..., drop=TRUE) {
             if (!missing(j) || length(list(...)) > 0L)
               stop("invalid subsetting")
-            newRanges <- callGeneric(as(x, "IRanges"), i=i, ...)
-            newPartition <- callGeneric(x@partition, i=i, ...)
-            IntervalForest(newRanges, newPartition)
-          })
+            as(callGeneric(as(x, "CompressedIRangesList"), i = i, ...), "IntervalForest")
+          }
+)
+
 
 ### - - - -
-### updating
-### this allows support for shift, narrow, etc. methods
-### - - - - 
+### show
+### - - - -
 
-setMethod("update", "IntervalForest",
-    function(object, ...) 
-        IntervalForest(update(as(object, "IRanges"), ...), object@partition))
+setMethod("show", "IntervalForest", 
+          function(object) {
+            newobj <- as(object, "CompressedIRangesList")
+            cat("IntervalForest of length ", length(object), "\n", sep="")
+            showRangesList(newobj, with.header=FALSE)
+          }
+)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Low-level utilities
 ###
 
-.IntervalForestCall <- function(object, fun, ...) {
-  validObject(object)
+.IntervalForestCall <- function(object, fun, check=TRUE, ...) {
+  if (check) validObject(object)
   fun <- paste("IntervalForest", fun, sep = "_")
   if (object@mode == "integer") {
     fun <- paste("Integer", fun, sep = "")

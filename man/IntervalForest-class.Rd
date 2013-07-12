@@ -67,14 +67,11 @@
   \code{\link[GenomicRanges]{GIntervalTree}}, which uses \code{IntervalForest} objects.
 }
 \examples{
-  query <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  qpartition <- factor(c("a","a","b"))
+  query <- IRangesList(a=IRanges(c(1,4),c(5,7)),b=IRanges(9,10))
+  subject <- IRangesList(a=IRanges(c(2,2),c(2,3)),b=IRanges(10,12))
+  forest <- IntervalForest(subject)
 
-  subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
-  spartition <- factor(c("a","a","b"))
-  forest <- IntervalForest(subject, spartition)
-
-  findOverlaps(query, forest, partition=qpartition)
+  findOverlaps(query, forest)
 }
 
 \keyword{classes}

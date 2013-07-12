@@ -162,43 +162,42 @@ IntervalForest *_IntegerIntervalForest_new(int npartitions) {
   return forest;
 }
 
-SEXP IntegerIntervalForest_new(SEXP r_ranges, SEXP r_partition, SEXP r_npartitions) {
+SEXP IntegerIntervalForest_new(SEXP r_ranges, SEXP r_partitionLengths, SEXP r_npartitions) {
   SEXP r_forest;
   
   cachedIRanges cached_r_ranges = _cache_IRanges(r_ranges);
   int nranges = _get_cachedIRanges_length(&cached_r_ranges);
-  int i, start, end, cur_partition;
+  int i, m, last, start, end;
   int npartitions = *INTEGER(r_npartitions);
-  int *partition = INTEGER(r_partition);
+  int *partitionLengths = INTEGER(r_partitionLengths);
   
   IntervalForest *forest = _IntegerIntervalForest_new(npartitions);
   
-  int tree_sizes[npartitions];
+  int treeSizes[npartitions];
   for (i = 0; i < npartitions; i++) {
-    tree_sizes[i] = 0;
+    treeSizes[i] = 0;
   }
   struct rbTree *tree;
 
   pushRHandlers();
-  for (i = 0; i < nranges; i++) {
-    start = _get_cachedIRanges_elt_start(&cached_r_ranges, i);
-    end = _get_cachedIRanges_elt_end(&cached_r_ranges, i);
-
-    
-    cur_partition = partition[i]-1;
-    tree = _IntegerIntervalForest_getTree(forest, cur_partition);
-    
-    tree_sizes[cur_partition] += 1;    
-    
-    if (end >= start)
-      _IntegerIntervalTree_add(tree, start, end, i+1);
+  for (i = 0, last = 0; i < npartitions; i++, partitionLengths++) {
+    for (m = 0; m < *partitionLengths; m++) {
+      start = _get_cachedIRanges_elt_start(&cached_r_ranges, last + m);
+      end = _get_cachedIRanges_elt_end(&cached_r_ranges, last + m);
+      tree = _IntegerIntervalForest_getTree(forest, i);
+      
+      if (end >= start)
+        _IntegerIntervalTree_add(tree, start, end, last+m+1);    
+    }
+    treeSizes[i] = m;
+    last += m;
   }
   popRHandlers();
   
   for (i = 0; i < npartitions; i++) {
     tree = _IntegerIntervalForest_getTree(forest, i);
-    tree->n = tree_sizes[i];
-    forest->n += tree_sizes[i];
+    tree->n = treeSizes[i];
+    forest->n += treeSizes[i];
     _IntegerIntervalTree_calc_max_end(tree);
   }
   
@@ -842,21 +841,16 @@ IntegerInterval **_IntegerIntervalForest_intervals(IntervalForest *forest) {
   return intervals;
 }
 
-
-SEXP IntegerIntervalTree_asIRanges(SEXP r_tree) {
+SEXP _IntegerIntervalTree_asIRanges(IntegerInterval **intervals, int nranges) {
   SEXP r_start, r_width, r_ranges;
-  struct rbTree *tree = R_ExternalPtrAddr(r_tree);
-  pushRHandlers();
-  IntegerInterval **intervals = _IntegerIntervalTree_intervals(tree);
-  popRHandlers();
   int i, *s_elt, *w_elt;
 
   /* Rprintf("tree size %d\n", tree->n); */
   
-  PROTECT(r_start = allocVector(INTSXP, tree->n));
-  PROTECT(r_width = allocVector(INTSXP, tree->n));
+  PROTECT(r_start = allocVector(INTSXP, nranges));
+  PROTECT(r_width = allocVector(INTSXP, nranges));
 
-  for(i = 0, s_elt = INTEGER(r_start), w_elt = INTEGER(r_width); i < tree->n;
+  for(i = 0, s_elt = INTEGER(r_start), w_elt = INTEGER(r_width); i < nranges;
       i++, s_elt++, w_elt++) {
     if (intervals[i]) {
       *s_elt = intervals[i]->start;
@@ -866,11 +860,28 @@ SEXP IntegerIntervalTree_asIRanges(SEXP r_tree) {
       *w_elt = 0;
     }
   }
-
   r_ranges = _new_IRanges("IRanges", r_start, r_width, R_NilValue);
 
   UNPROTECT(2);
   return r_ranges;
+}
+
+SEXP IntegerIntervalTree_asIRanges(SEXP r_tree) {
+  struct rbTree *tree = R_ExternalPtrAddr(r_tree);
+  pushRHandlers();
+  IntegerInterval **intervals = _IntegerIntervalTree_intervals(tree);
+  popRHandlers();
+  
+  return _IntegerIntervalTree_asIRanges(intervals, tree->n);
+}
+
+SEXP IntegerIntervalForest_asIRanges(SEXP r_forest) {
+  IntervalForest *forest = R_ExternalPtrAddr(r_forest);
+  pushRHandlers();
+  IntegerInterval **intervals = _IntegerIntervalForest_intervals(forest);
+  popRHandlers();
+  
+  return _IntegerIntervalTree_asIRanges(intervals, forest->n);
 }
 
 SEXP IntegerIntervalTree_start(SEXP r_tree) {
@@ -943,7 +954,7 @@ SEXP IntegerIntervalTree_length(SEXP r_tree) {
   return ScalarInteger(tree->n);
 }
 
-SEXP IntegerIntervalForest_length(SEXP r_forest) {
+SEXP IntegerIntervalForest_nobj(SEXP r_forest) {
   IntervalForest *forest = R_ExternalPtrAddr(r_forest);
   return ScalarInteger(forest->n);  
 }
