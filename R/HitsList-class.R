@@ -39,6 +39,9 @@ setMethod("queryHits", "HitsList", function(x) {
 })
 setMethod("queryHits", "CompressedHitsList", function(x) queryHits(x@unlistData))
 
+setMethod("queryLength", "CompressedHitsList", function(x) queryLength(x@unlistData))
+setMethod("subjectLength", "CompressedHitsList", function(x) subjectLength(x@unlistData))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
 ###
@@ -62,7 +65,7 @@ CompressedHitsList <- function(hits, subject)
 
   sspace <- space(subject)
   hspace <- as.integer(sspace[subjectHits(hits)])
-  partitioning <- PartitioningByEnd(hspace, names=names(subject), NG=length(subject))
+  partitioning <- PartitioningByEnd(hspace, names=names(subject), NG=length(names(subject)))
   newCompressedList0("CompressedHitsList", unlistData=hits, partitioning=partitioning)
 }
 
@@ -78,6 +81,10 @@ setMethod("as.matrix", "HitsList", function(x) {
   rows <- c(0L, head(cumsum(sapply(x, queryLength)), -1))
   nr <- sapply(mats, nrow)
   mat + cbind(rep.int(rows, nr), rep.int(x@subjectOffsets, nr))
+})
+
+setMethod("as.matrix", "CompressedHitsList", function(x) {
+  cbind(queryHits=queryHits(x), subjectHits=subjectHits(x))
 })
 
 ## count up the matches for each query in every matching

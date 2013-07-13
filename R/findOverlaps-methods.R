@@ -13,7 +13,7 @@
 setGeneric("findOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
              type = c("any", "start", "end", "within", "equal"),
-             select = c("all", "first", "last", "arbitrary"), partition=NULL, ...)
+             select = c("all", "first", "last", "arbitrary"), ...)
         standardGeneric("findOverlaps")
 )
 
@@ -22,8 +22,7 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
 ### by the IntervalTree and IntervalForest versions of findOverlaps
 ###
 ### pre-process query (sort and adjust) and partition (if not NULL)
-.preProcess_findOverlaps_query <- function(query, maxgap, minoverlap, 
-                                            partition=NULL, slevels=NULL) {
+.preProcess_findOverlaps_query <- function(query, maxgap, minoverlap, partitioning=NULL) {
   res <- list()  
   query <- as(query, "IRanges")
   query_ord <- NULL
@@ -33,9 +32,8 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
     query <-
       resize(query, width(query) + 2L * adjust, fix = "center")
   res$unsortedQuery <- query
-  res$unsortedPartition <- partition
 
-  if (is.null(partition)) {
+  if (is.null(partitioning)) {
     if (isNotSorted(start(query))) { ## query must be sorted
       query_ord <- sort.list(start(query), method = "quick",
                              na.last = NA)
@@ -44,58 +42,30 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
       query_ord <- seq_len(length(query))
     }
   } else {
-    # query and partition must be sorted by partition (according to 
-    # subject partition levels) then query start
+    if(!is(partitioning, "PartitioningByEnd"))
+      stop("invalid partitioning")
+
+    # query be sorted within partition spaces 
     query_ord <- seq_len(length(query))
 
-    # find query ranges with no matching partition level in subject
-    m <- match(partition, slevels)
-    naind <- is.na(m)
+    isSorted <- TRUE
+    for (i in seq(len=length(partitioning))) {
+      curStart <- start(partitioning)[i]
+      curEnd <- end(partitioning)[i]
 
-    if (any(naind))
-      partition <- partition[!naind]
-
-    isSorted <- !isNotSorted(runValue(partition))
-  
-    partition_split <- splitRanges(partition)
-    last <- 0
-    for (i in seq_along(partition_split)) {
-      ind <- partition_split[[i]]
-      curPartitionLength <- sum(width(ind))
-
-      # empty partition or no matching partition in subject
-      if (curPartitionLength==0) {
+      qStarts <- seqselect(start(query), start=start(partitioning)[i], end=end(partitioning)[i])
+      if (isNotSorted(qStarts)) {
         isSorted <- FALSE
-        next
+        ind <- seqselect(query_ord,start=curStart,end=curEnd)
+        seqselect(query_ord,start=curStart,end=curEnd) <- ind[sort.list(qStarts, method="quick",na.last=NA)]
       }
-
-      curStarts <- seqselect(start(query), ind)
-      ind <- as.integer(ind)
-
-      if (isNotSorted(curStarts)) {
-        ind <- ind[order(curStarts)]
-        isSorted <- FALSE
-      }
-      query_ord[last+seq_len(curPartitionLength)] <- ind
-      last <- last + curPartitionLength
-    }
-    if (any(naind) && last>0) {
-      # stick query ranges with no matching levels 
-      # in the subject to the end
-        query_ord[seq(len=last)] <- which(!naind)[query_ord[seq(len=last)]]
-        query_ord[-seq(len=last)] <- which(naind)
     }
     if (!isSorted) {
       query <- query[query_ord]
-      partition <- res$unsortedPartition[query_ord]
-    }
-    if (any(naind) && last>0) {
-      partition[-seq(len=last)] <- NA
     }
   }
   res$query <- query
   res$query_ord <- query_ord
-  res$partition <- partition
   res
 }
 
@@ -103,8 +73,12 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
 .postProcess_findOverlaps_result <- function(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
 {
   if (type != "any" || minoverlap > 1L) {
+    if (!is(subject,"Ranges"))
+        subject <- as(subject, "IRanges")
+
     m <- as.matrix(result)
     if (minoverlap > 1L) {
+
       r <- ranges(result, unsortedQuery, subject)
       m <- m[width(r) >= minoverlap, , drop=FALSE]
       ## unname() required because in case 'm' has only 1 row
@@ -182,75 +156,6 @@ setMethod("findOverlaps", c("Ranges", "IntervalTree"),
             .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
           })
 
-### findOverlaps method for IntervalForest
-setMethod("findOverlaps", c("Ranges", "IntervalForest"),
-          function(query, subject, maxgap = 0L, minoverlap = 1L,
-                   type = c("any", "start", "end", "within", "equal"),
-                   select = c("all", "first", "last", "arbitrary"), partition)
-          {
-            # verify inputs
-            if (!isSingleNumber(maxgap) || maxgap < 0L)
-              stop("'maxgap' must be a single, non-negative integer")
-            if (!isSingleNumber(minoverlap) || minoverlap < 1L)
-              stop("'minoverlap' must be a single, positive integer")
-
-            # verify partition is a factor and convert to Rle if needed
-            if (!is(partition, "Rle")) {
-              if (!is.factor(partition)) {
-                stop("'partition' must be a factor Rle or factor")
-              }
-              partition <- Rle(partition)
-            } else {
-              if (!is.factor(runValue(partition))) {
-                stop("'partition' must be a factor Rle or factor")
-              }
-            }
-
-            # verify partition and query lengths agree
-            if (length(query) != length(partition)) {
-              stop("'partition' must be the same length as 'query'")
-            }
-            
-
-            type <- match.arg(type)
-            select <- match.arg(select)
-            origSelect <- select
-            if (type != "any" || minoverlap > 1L)
-              select <- "all"
-
-            # preprocess query
-            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap, partition, levels(subject))
-            origQuery <- preprocRes$origQuery
-            unsortedQuery <- preprocRes$unsortedQuery
-            query <- preprocRes$query
-            query_ord <- preprocRes$query_ord
-            unsortedPartition <- preprocRes$unsortedPartition
-            partition <- preprocRes$partition
-
-            validObject(query)
-            validObject(partition)
-
-            # match query partition to subject partition            
-            partitionIndices <- match(runValue(partition), levels(subject))
-            
-            # make initial findOverlaps call
-            fun <- paste("overlap_", select, sep = "")
-            result <- .IntervalForestCall(subject, fun, query, partitionIndices, runLength(partition), query_ord)
-
-            # postprocess findOverlaps result
-            .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)            
-          })
-
-setMethod("findOverlaps", c("IntervalForest", "IntervalForest"),
-          function(query, subject, maxgap = 0L, minoverlap = 1L,
-                   type = c("any", "start", "end", "within", "equal"),
-                   select = c("all", "first", "last", "arbitrary"))
-          {
-            findOverlaps(as(query, "IRanges"), subject, maxgap = maxgap,
-                         minoverlap = minoverlap, type = match.arg(type),
-                         select = match.arg(select), partition = query@partition)
-          })
-
 setMethod("findOverlaps", c("Ranges", "Ranges"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
@@ -317,6 +222,75 @@ setMethod("findOverlaps", c("Vector", "Views"),
     }
 )
 
+### findOverlaps method for IntervalForest
+setMethod("findOverlaps", c("RangesList", "IntervalForest"),
+          function(query, subject, maxgap = 0L, minoverlap = 1L,
+                   type = c("any", "start", "end", "within", "equal"),
+                   select = c("all", "first", "last", "arbitrary"), drop=FALSE)
+          {
+            # verify inputs
+            if (!isSingleNumber(maxgap) || maxgap < 0L)
+              stop("'maxgap' must be a single, non-negative integer")
+            if (!isSingleNumber(minoverlap) || minoverlap < 1L)
+              stop("'minoverlap' must be a single, positive integer")
+
+            type <- match.arg(type)
+            select <- match.arg(select)
+            origSelect <- select
+            if (type != "any" || minoverlap > 1L)
+              select <- "all"
+
+            if (!is(query, "CompressedIRangesList"))
+              query <- as(query, "CompressedIRangesList")
+
+            validObject(query)
+
+            queryList <- query
+            query <- queryList@unlistData
+            partitioning <- queryList@partitioning
+
+            # preprocess query
+            preprocRes <- .preProcess_findOverlaps_query(query, maxgap, minoverlap, partitioning)
+            origQuery <- preprocRes$origQuery
+            unsortedQuery <- preprocRes$unsortedQuery
+            query <- preprocRes$query
+            query_ord <- preprocRes$query_ord
+
+            validObject(query)
+
+            # match query partition to subject partition            
+            partitionIndices <- match(names(partitioning), names(subject))
+            
+            # make initial findOverlaps call
+            fun <- paste("overlap_", select, sep = "")
+            result <- .IntervalForestCall(subject, fun, query, partitionIndices, elementLengths(partitioning), query_ord)
+
+            # postprocess findOverlaps result
+            res <- .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
+
+            # turn it into compressed list            
+            if (origSelect == "all")
+              return(CompressedHitsList(res, subject))
+
+            if (!drop) {
+              return(newCompressedList0("CompressedIntegerList", unlistData=res, partitioning=partitioning))
+            }
+            res
+          })
+
+# might consider making this the following:
+# setMethod("findOverlaps", c("RangesList", "RangesList"),
+#           function(query, subject, maxgap = 0L, minoverlap = 1L,
+#                    type = c("any", "start", "end", "within", "equal"),
+#                    select = c("all", "first", "last", "arbitrary"),
+#                    drop = FALSE)
+#           {
+#             findOverlaps(query, as(query, "IntervalForest"),
+#               maxgap = maxgap, minoverlap = minoverlap,
+#               type = match.arg(type), select = match.arg(select), drop = drop)
+#           }
+#   )
+
 setMethod("findOverlaps", c("RangesList", "RangesList"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"),
@@ -362,6 +336,7 @@ setMethod("findOverlaps", c("RangesList", "RangesList"),
             }
             ans
           })
+
 
 setMethod("findOverlaps", c("ViewsList", "ViewsList"),
     function(query, subject, maxgap=0L, minoverlap=1L,
@@ -439,17 +414,16 @@ setMethod("findOverlaps", c("RangesList", "RangedData"),
 
 setGeneric("countOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
+             type = c("any", "start", "end", "within", "equal"), ...)
         standardGeneric("countOverlaps")
 )
 
 setMethod("countOverlaps", c("ANY", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
+             type = c("any", "start", "end", "within", "equal"), ...)
     {
         counts <- queryHits(findOverlaps(query, subject, maxgap = maxgap,
-                                         minoverlap = minoverlap, type = type, 
-                                         partition = partition, ...))
+                                         minoverlap = minoverlap, type = type, ...))
         structure(tabulate(counts, length(query)), names=names(query))
 
     }
@@ -464,6 +438,17 @@ setMethod("countOverlaps", c("ANY", "missing"),
     }
 )
 
+setMethod("countOverlaps", c("RangesList", "IntervalForest"),
+          function(query, subject, maxgap = 0L, minoverlap = 1L,
+                   type = c("any", "start", "end", "within", "equal"), drop = FALSE, ...)
+          {
+            query <- as("CompressedIRangesList", query)
+            hits <- findOverlaps(query, subject, maxgap = maxgap,
+                                 minoverlap = minoverlap, type = type, ...)
+            res <- tabulate(queryHits(hits), queryLength(hits))
+            newCompressedList0("CompressedIntegerList", unlistData=res, partitioning = query@partitioning)
+          })
+  
 setMethod("countOverlaps", c("RangesList", "RangesList"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"))
@@ -677,13 +662,13 @@ setMethod("match", c("RangesList", "RangedData"),
 ### Same args and signature as countOverlaps() and subsetByOverlaps().
 setGeneric("overlapsAny", signature=c("query", "subject"),
     function(query, subject, maxgap=0L, minoverlap=1L,
-             type=c("any", "start", "end", "within", "equal"), partition = NULL, ...)
+             type=c("any", "start", "end", "within", "equal"), ...)
         standardGeneric("overlapsAny")
 )
 
 setMethod("overlapsAny", c("Ranges", "Ranges"),
     function(query, subject, maxgap=0L, minoverlap=1L,
-             type=c("any", "start", "end", "within", "equal"), partition=NULL, ...)
+             type=c("any", "start", "end", "within", "equal"), ...)
     {
         !is.na(findOverlaps(query, subject, maxgap=maxgap,
                             minoverlap=minoverlap, type=type,
@@ -832,18 +817,18 @@ setMethods("%in%", .signatures, `.%in%.definition`)
 
 setGeneric("subsetByOverlaps", signature = c("query", "subject"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), partition = NULL,  ...)
+             type = c("any", "start", "end", "within", "equal"), ...)
         standardGeneric("subsetByOverlaps")
 )
 
 setMethod("subsetByOverlaps", c("Vector", "Vector"),
     function(query, subject, maxgap = 0L, minoverlap = 1L,
-             type = c("any", "start", "end", "within", "equal"), partition = NULL, ...)
+             type = c("any", "start", "end", "within", "equal"), ...)
     {
         type <- match.arg(type)
         query[!is.na(findOverlaps(query, subject, maxgap = maxgap,
                                   minoverlap = minoverlap, type = type,
-                                  select = "arbitrary", partition = partition, ...))]
+                                  select = "arbitrary", ...))]
     }
 )
 

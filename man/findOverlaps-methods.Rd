@@ -387,28 +387,34 @@ ranges(ov, query, subject)
 ## ---------------------------------------------------------------------
 query <- IRanges(c(1, 4, 9), c(5, 7, 10))
 qpartition <- factor(c("a","a","b"))
+qlist <- split(query, qpartition)
 
 subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
 spartition <- factor(c("a","a","b"))
+slist <- split(subject, spartition)
 
-forest <- IntervalForest(subject, spartition)
+forest <- IntervalForest(slist)
 
 ## at most one hit per query
-findOverlaps(query, forest, partition=qpartition, select = "first")
-findOverlaps(query, forest, partition=qpartition, select = "last")
-findOverlaps(query, forest, partition=qpartition, select = "arbitrary")
+findOverlaps(qlist, forest, partition=qpartition, select = "first")
+findOverlaps(qlist, forest, partition=qpartition, select = "last")
+findOverlaps(qlist, forest, partition=qpartition, select = "arbitrary")
 
 query <- IRanges(c(1, 5, 3, 4), width=c(2, 2, 4, 6))
-qpartition <- Rle(factor(c("a","a","b","b")))
+qpartition <- factor(c("a","a","b","b")
+qlist <- split(query, qpartition)
 
 subject <- IRanges(c(1, 3, 5, 6), width=c(4, 4, 5, 4))
-spartition <- Rle(factor(c("a","a","b","b")))
-forest <- IntervalForest(subject, spartition)
+spartition <- factor(c("a","a","b","b"))
+slist <- split(subject, spartition)
+forest <- IntervalForest(slist)
 
-overlapsAny(query, forest, partition=qpartition, type="start")
-overlapsAny(query, forest, partition=qpartition, type="end")
-subsetByOverlaps(query, forest, partition=qpartition)
-countOverlaps(query, forest, partition=qpartition)
+overlapsAny(qlist, forest, partition=qpartition, type="start")
+overlapsAny(qlist, forest, partition=qpartition, type="end")
+qlist %over% forest
+
+subsetByOverlaps(qlist, forest, partition=qpartition)
+countOverlaps(qlist, forest, partition=qpartition)
 
 }
 

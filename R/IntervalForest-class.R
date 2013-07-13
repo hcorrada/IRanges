@@ -11,7 +11,7 @@ setClass("IntervalForest",
 ###
 .valid.IntervalForest.partitioning <- function(x)
 {
-    dataLength <- .IntervalForestCall(x,"nobj",check=FALSE)
+    dataLength <- .IntervalForestCall(x,"nobj")
     if (nobj(x@partitioning) != dataLength)
         "improper partitioning"
     else NULL
@@ -57,11 +57,13 @@ setAs("IntervalForest", "CompressedIRangesList",
          check=FALSE)
 })
 
+setAs("IntervalForest", "IRanges", function(from) .IntervalForestCall(from, "asIRanges"))
+
 setAs("CompressedIRangesList", "IntervalForest",
   function(from) {
   validObject(from)
     
-  npartitions <- length(from)
+  npartitions <- length(from@partitioning)
   partitionLengths <- elementLengths(from)
   
   ptr <- .Call2("IntegerIntervalForest_new", from@unlistData, partitionLengths, npartitions, PACKAGE="IRanges")
@@ -103,8 +105,7 @@ setMethod("elementLengths", "IntervalForest",
     }
 )
 
-setMethod("length", "IntervalForest", function(x) length(x@partitioning))
-
+setMethod("length", "IntervalForest", function(x) nobj(x@partitioning))
 setMethod("names", "IntervalForest", function(x) names(x@partitioning))
 
 ### - - - - 
@@ -115,7 +116,9 @@ setMethod("[", "IntervalForest",
           function(x, i, j, ..., drop=TRUE) {
             if (!missing(j) || length(list(...)) > 0L)
               stop("invalid subsetting")
-            as(callGeneric(as(x, "CompressedIRangesList"), i = i, ...), "IntervalForest")
+            rl <- split(callGeneric(as(x, "IRanges"), i = i, ...),
+                        callGeneric(space(x), i = i, ...))
+            as(rl, "IntervalForest")
           }
 )
 
@@ -127,7 +130,7 @@ setMethod("[", "IntervalForest",
 setMethod("show", "IntervalForest", 
           function(object) {
             newobj <- as(object, "CompressedIRangesList")
-            cat("IntervalForest of length ", length(object), "\n", sep="")
+            cat("IntervalForest of length ", length(newobject), "\n", sep="")
             showRangesList(newobj, with.header=FALSE)
           }
 )
@@ -136,8 +139,8 @@ setMethod("show", "IntervalForest",
 ### Low-level utilities
 ###
 
-.IntervalForestCall <- function(object, fun, check=TRUE, ...) {
-  if (check) validObject(object)
+.IntervalForestCall <- function(object, fun, ...) {
+  # validObject(object)
   fun <- paste("IntervalForest", fun, sep = "_")
   if (object@mode == "integer") {
     fun <- paste("Integer", fun, sep = "")

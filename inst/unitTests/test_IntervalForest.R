@@ -58,7 +58,6 @@ test_CompressedHitsList <- function() {
 }
 
 test_IntervalForest_findOverlaps <- function() {
-  DEACTIVATED()
   ## a .....
   ## b    ....
   ## a        ..
@@ -67,28 +66,32 @@ test_IntervalForest_findOverlaps <- function() {
   ## a         xxx
   query <- IRanges(c(1, 4, 9), c(5, 7, 10))
   qpartition <- factor(c("a","b","a"))
-  ql <- split(query, qpartition)
+  qlist <- split(query, qpartition)
 
   subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
   spartition <- factor(c("a","a","b"))
-  sl <- split(subject, spartition)
+  slist <- split(subject, spartition)
 
-  tree <- IntervalForest(subject, spartition)
+  forest <- IntervalForest(slist)
 
-  result <- findOverlaps(query, tree, partition=qpartition, select = "first")
-  checkIdentical(result, c(1L, NA, NA))
+  result <- findOverlaps(qlist, forest, select = "first")
+  expected <- new2("CompressedIntegerList", unlistData=c(1L, NA, NA), partitioning=PartitioningByEnd(c(1,1,2), names=c("a","b"), NG=2))
+  checkIdentical(result, expected)
   
   query <- IRanges(c(1, 4, 9), c(5, 7, 10))
   qpartition <- factor(c("a","a","b"))
+  qlist <- split(query, qpartition)
+
+  result <- findOverlaps(qlist, forest, select = "first")
+  expected <- new2("CompressedIntegerList", unlistData= c(1L, NA, 3L), partitioning=PartitioningByEnd(c(1,1,2), names=c("a","b"), NG=2))
+  checkIdentical(result, expected)
   
-  result <- findOverlaps(query, tree, partition=qpartition, select = "first")
-  checkIdentical(result, c(1L, NA, 3L))
+  result <- findOverlaps(qlist, forest, select = "last")
+  expected@unlistData <- c(2L, NA, 3L)
+  checkIdentical(result, expected)
   
-  result <- findOverlaps(query, tree, partition=qpartition, select = "last")
-  checkIdentical(result, c(2L, NA, 3L))
-  
-  result <- findOverlaps(query, tree, partition=qpartition, select = "arbitrary")
-  checkIdentical(result, c(2L, NA, 3L))
+  result <- findOverlaps(qlist, forest, select = "arbitrary")
+  checkIdentical(result, expected)
 
   checkOverlap <- function(a, q, s, r, c) {
     mat <- cbind(queryHits = as.integer(q), subjectHits = as.integer(s))
@@ -97,38 +100,43 @@ test_IntervalForest_findOverlaps <- function() {
     checkIdentical(subjectLength(a), as.integer(c))
   }
 
-   result <- findOverlaps(query, tree, partition=qpartition)
-   checkOverlap(result, c(1, 1, 3), c(1, 2, 3), 3, 3)
+  result <- findOverlaps(qlist, forest)
+  checkOverlap(result, c(1, 1, 3), c(1, 2, 3), 3, 3)
  
   ## with 'maxgap'
-  result <- findOverlaps(query, tree, 1, partition=qpartition)
+  result <- findOverlaps(qlist, forest, 1)
   checkOverlap(result, c(1, 1, 2, 3), c(1, 2, 2, 3), 3, 3)
 
   ## with 'minoverlap'
-  result <- findOverlaps(query, tree, minoverlap = 3L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, minoverlap = 3L)
   checkOverlap(result, integer(0), integer(0), 3, 3)
-  result <- findOverlaps(query, tree, minoverlap = 2L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, minoverlap = 2L)
   checkOverlap(result, 1, 2, 3, 3)
-  result <- findOverlaps(query, tree, minoverlap = 2L, select = "first", partition=qpartition)
-  checkIdentical(result, c(2L, NA, NA))
-  result <- findOverlaps(query, tree, minoverlap = 2L, select = "last", partition=qpartition)
-  checkIdentical(result, c(2L, NA, NA))
-  result <- findOverlaps(query, tree, minoverlap = 2L, select = "arbitrary", partition=qpartition)
-  checkIdentical(result, c(2L, NA, NA))
+  result <- findOverlaps(qlist, forest, minoverlap = 2L, select = "first")
+  expected <- new2("CompressedIntegerList", unlistData=c(2L, NA, NA), partitioning=PartitioningByEnd(c(1,1,2),names=c("a","b"), NG=2))
+  checkIdentical(result, expected)
+  result <- findOverlaps(qlist, forest, minoverlap = 2L, select = "last")
+  expected@unlistData <- c(2L, NA, NA)
+  checkIdentical(result, expected)
+  result <- findOverlaps(qlist, forest, minoverlap = 2L, select = "arbitrary")
+  expected@unlistData <- c(2L, NA, NA)
+  checkIdentical(result, expected)
 
   ## empty query range
   #subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
   #spartition <- factor(c("a","a","b"))
   query <- IRanges(c(1, 4, 9, 10), c(5, 7, 10, 9))
   qpartition <- factor(c("a","a","b","b"))
-  result <- findOverlaps(query, tree, partition=qpartition)
+  qlist <- split(query, qpartition)
+  result <- findOverlaps(qlist, forest)
   checkOverlap(result, c(1, 1, 3), c(1, 2, 3), 4, 3)
 
   ## empty subject range
   subject <- IRanges(c(2, 2, 2, 10), c(2, 1, 3, 12))
   spartition <- factor(c("a","a","a","b"))
-  tree <- IntervalForest(subject, spartition)
-  result <- findOverlaps(query, tree, partition=qpartition)
+  slist <- split(subject, spartition)
+  forest <- IntervalForest(slist)
+  result <- findOverlaps(qlist, forest)
   checkOverlap(result, c(1, 1, 3), c(1, 3, 4), 4, 4)
 
   ## .....
@@ -138,13 +146,15 @@ test_IntervalForest_findOverlaps <- function() {
   ##  xxx
   query <- IRanges(c(1, 4, 9), c(5, 7, 10))
   qpartition <- factor(c("a","b","a"))
-  
+  qlist <- split(query, qpartition)
+
   subject <- IRanges(c(2, 2), c(5, 4))
   spartition <- factor(c("a","b"))
-  
-  tree <- IntervalForest(subject, spartition)
-  result <- findOverlaps(query, tree, partition=qpartition)
-  checkOverlap(result, c(1, 2), c(1, 2), 3, 2)
+  slist <- split(subject, spartition)
+
+  forest <- IntervalForest(slist)
+  result <- findOverlaps(qlist, forest)
+  checkOverlap(result, c(1, 3), c(1, 2), 3, 2)
 
   
   ## check case of identical subjects
@@ -156,47 +166,37 @@ test_IntervalForest_findOverlaps <- function() {
   ##      xx
   ##      xxx
   ##      xx
-  query <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  qpartition <- factor(c("a","b","a"))
-  
+  query <- IRanges(c(1, 9, 4), c(5, 10, 7))
+  qpartition <- factor(c("a","a","b"))
+  qlist <- split(query, qpartition)
+
   subject <- IRanges(c(2, 2, 6, 6, 6), c(5, 5, 7, 8, 7))  
   spartition <- factor(c("a","a","b","b","b"))
-  
-  tree <- IntervalForest(subject, spartition)
-  result <- findOverlaps(query, tree, partition=qpartition)
-  checkOverlap(result, c(1, 1, 2, 2, 2), c(1, 2, 3, 4, 5), 3, 5)
+  slist <- split(subject, spartition)
+
+  forest <- IntervalForest(slist)
+  result <- findOverlaps(qlist, forest)
+  checkOverlap(result, c(1, 1, 3, 3, 3), c(1, 2, 3, 4, 5), 3, 5)
 
   # on unsorted query
-  query <- IRanges(c(10, 5, 3, 7, 9), c(15, 7, 7, 10, 12))
-  qpartition <- factor(c("a","b","b","a","a"))
-  result <- findOverlaps(query, tree, partition=qpartition)
-  checkOverlap(result, c(2, 2, 2, 3, 3, 3), c(3, 4, 5, 3, 4, 5), 5, 5)
+  query <- IRanges(c(10, 7, 9, 5, 3), c(15, 10, 12, 7, 7))
+  qpartition <- factor(c("a","a","a","b","b"))
+  qlist <- split(query, qpartition)
+  result <- findOverlaps(qlist, forest)
+  checkOverlap(result, c(4, 4, 4, 5, 5, 5), c(3, 4, 5, 3, 4, 5), 5, 5)
 
   # query with partition level not in subject
-  query <- IRanges(c(10, 5, 3, 7, 9), c(15, 7, 7, 10, 12))
-  qpartition <- factor(c("a","b","c","a","a"))
+  query <- IRanges(c(10, 7, 9, 5, 3), c(15, 10, 12, 7, 7))
+  qpartition <- factor(c("a","a","a","b","c"))
+  qlist <- split(query, qpartition)
 
   subject <- IRanges(c(2, 2, 6, 6, 6), c(5, 5, 7, 8, 7))  
   spartition <- factor(c("b","b","b","b","b"))
+  slist <- split(subject, spartition)
 
-  tree <- IntervalForest(subject, spartition)
-  result <- findOverlaps(query, tree, partition=qpartition)
-  checkOverlap(result, c(2, 2, 2, 2, 2), c(1, 2, 3, 4, 5), 5, 5)
-
-#   subject <- IRanges(c(1, 6, 13), c(4, 9, 14)) # single points (this doesn't work since findOverlaps-integer,Ranges doesn't pass ...)
-#   spartition <- factor(c("a","b","c"))
-#   subject <- IntervalForest(subject, spartition)
-#   
-#   checkIdentical(findOverlaps(c(3L, 7L, 10L), subject, partition=factor(c("a","a","b")), select = "first"),
-#                  c(1L, 2L, NA))
-#   checkIdentical(findOverlaps(c(3L, 7L, 10L), subject, partition=factor(c("a","a","b")), select = "last"),
-#                  c(1L, 2L, NA))
-#   checkIdentical(findOverlaps(c(3L, 7L, 10L), subject, partition=factor(c("a","a","b")), select = "arbitrary"),
-#                  c(1L, 2L, NA))
-#   checkIdentical(findOverlaps(IRanges(c(2,1),c(3,4)), subject, partition=factor(c("a","a"))),
-#                  new("Hits",
-#                      queryHits = 1:2, subjectHits = c(1L,1L),
-#                      queryLength = 2L, subjectLength = 3L))
+  forest <- IntervalForest(slist)
+  result <- findOverlaps(qlist, forest)
+  checkOverlap(result, c(4, 4, 4, 4, 4), c(1, 2, 3, 4, 5), 5, 5)
 
   ## check other types of matching
 
@@ -211,30 +211,32 @@ test_IntervalForest_findOverlaps <- function() {
 
   query <- IRanges(c(1, 5, 3, 4), width=c(2, 2, 4, 6))
   qpartition <- factor(c("a","a","a","a"))
-  
+  qlist <- split(query, qpartition)
+
   subject <- IRanges(c(1, 3, 5, 6), width=c(4, 4, 5, 4))
   spartition <- factor(c("a","a","a","a"))
-  tree <- IntervalForest(subject, spartition)
+  slist <- split(subject, spartition)
+  forest <- IntervalForest(slist)
 
   ## 'start'
-  result <- findOverlaps(query, tree, type = "start", partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "start")
   checkOverlap(result, c(1, 2, 3), c(1, 3, 2), 4, 4)
 
   ## non-zero maxgap
-  result <- findOverlaps(query, tree, type = "start", maxgap = 1L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "start", maxgap = 1L)
   checkOverlap(result, c(1, 2, 2, 3, 4, 4), c(1, 3, 4, 2, 2, 3), 4, 4)
 
   ## minoverlap > 1L
-  result <- findOverlaps(query, tree, type = "start", minoverlap = 3L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "start", minoverlap = 3L)
   checkOverlap(result, 3, 2, 4, 4)
   
   ## combine minoverlap and maxgap
-  result <- findOverlaps(query, tree, type = "start", maxgap = 1L,
-                         minoverlap = 3L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "start", maxgap = 1L,
+                         minoverlap = 3L)
   checkOverlap(result, c(3, 4, 4), c(2, 2, 3), 4, 4)
   
   ## 'end'
-  result <- findOverlaps(query, tree, type = "end", partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "end")
   checkOverlap(result, c(2, 3, 4, 4), c(2, 2, 3, 4), 4, 4)
 
 #   ## ensure inverse is same as transpose
@@ -243,26 +245,28 @@ test_IntervalForest_findOverlaps <- function() {
 #   checkIdentical(as.matrix(inverse), tr[order(tr[,1]),])
 
   ## select = "first"
-  result <- findOverlaps(query, tree, type = "end", select = "first",partition=qpartition)
-  checkIdentical(result, c(NA, 2L, 2L, 3L))  
+  result <- findOverlaps(qlist, forest, type = "end", select = "first")
+  expected <- new2("CompressedIntegerList", unlistData=c(NA, 2L, 2L, 3L), partitioning=qlist@partitioning)
+  checkIdentical(result, expected)  
 
   ## 'within'
-  result <- findOverlaps(query, tree, type = "within", partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "within")
   checkOverlap(result, c(1, 2, 2, 3), c(1, 2, 3, 2), 4, 4)  
 
-  result <- findOverlaps(query, tree, type = "within", maxgap = 1L, partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "within", maxgap = 1L)
   checkOverlap(result, c(1, 2, 2, 2, 3, 4), c(1, 2, 3, 4, 2, 3), 4, 4)  
   
   ## 'equal'
-  result <- findOverlaps(query, tree, type = "equal", partition=qpartition)
+  result <- findOverlaps(qlist, forest, type = "equal")
   checkOverlap(result, 3, 2, 4, 4)  
 
   ## self matching
   subject <- IRanges(c(2, 2, 6, 6, 6), c(5, 5, 7, 8, 7))  
   spartition <- factor(c("a","a","b","b","b"))
-  
-  tree <- IntervalForest(subject, spartition)
-  result <- findOverlaps(tree)
+  slist <- split(subject, spartition)
+
+  forest <- IntervalForest(slist)
+  result <- findOverlaps(forest)
   checkOverlap(result, c(1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5), 
                        c(1, 2, 1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5), 5, 5)
 # 
@@ -285,19 +289,18 @@ test_IntervalForest_asRangesList <- function() {
 }
 
 test_IntervalForest_subset <- function() {
-  DEACTIVATED()
-  ranges <- IRanges(c(1, 4, 9), c(5, 7, 10))
-  partition <- Rle(factor(c("a","b","a")))
+  ranges <- IRanges(c(1, 9, 4), c(5, 10, 7))
+  partition <- factor(c("a","a","b"))
+  rlist <- split(ranges, partition)  
+  forest <- IntervalForest(rlist)
+  checkIdentical(as(forest, "IRanges"), ranges)
   
-  tree <- IntervalForest(ranges, partition)
-  checkIdentical(as(tree, "IRanges"), ranges)
-  
-  subtree <- tree[c(1,3)]
+  subforest <- forest[c(1,3)]
   subranges <- ranges[c(1,3)]
-  subpartition <- partition[c(1,3)]
+  subspaces <- space(forest)[c(1,3)]
   
-  checkIdentical(as(subtree,"IRanges"), subranges)
-  checkIdentical(subtree@partition, subpartition)
+  checkIdentical(as(subforest,"IRanges"), subranges)
+  checkIdentical(space(subforest), subspaces)
 }
 
 test_IntervalForest_range <- function() {
