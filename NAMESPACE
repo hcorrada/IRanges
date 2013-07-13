@@ -42,7 +42,7 @@ exportClasses(
     DataFrameList, SimpleDataFrameList,
     SplitDataFrameList, CompressedSplitDataFrameList, SimpleSplitDataFrameList,
     RangedData, RangedDataList, FilterRules, FilterMatrix, RDApplyParams,
-    Hits, HitsList,
+    Hits, HitsList, CompressedHitsList, 
     OverlapEncodings,
     RangedSelection, RangesMapping
 )
@@ -245,6 +245,7 @@ export(
     IRangesList,
     RleViewsList,
     remapHits,
+    CompressedHitsList, 
     hits,
     "%over%", "%within%", "%outside%",
     encodeOverlaps1, RangesList_encodeOverlaps,

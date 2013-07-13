@@ -10,6 +10,10 @@ setClass("HitsList",
     prototype(elementType="Hits")
 )
 
+setClass("CompressedHitsList",
+    prototype = prototype(elementType = "Hits",
+                          unlistData = new("Hits")),
+    contains="CompressedList")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
@@ -28,9 +32,12 @@ setMethod("subjectHits", "HitsList", function(x) {
   as.matrix(x)[,2L,drop=TRUE]
 })
 
+setMethod("subjectHits", "CompressedHitsList", function(x) subjectHits(x@unlistData))
+
 setMethod("queryHits", "HitsList", function(x) {
   as.matrix(x)[,1L,drop=TRUE]
 })
+setMethod("queryHits", "CompressedHitsList", function(x) queryHits(x@unlistData))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
@@ -46,6 +53,18 @@ HitsList <- function(list_of_hits, subject)
   newList("HitsList", list_of_hits, subjectOffsets = subjectOffsets)
 }
 
+CompressedHitsList <- function(hits, subject)
+{
+  if (!(is(subject, "IntervalForest") || is(subject, "CompressedIRangesList")))
+    stop("'subject' must be an 'IntervalForest' or 'CompressedIRangesList' object")
+  if (!is(hits, "Hits"))
+    stop("'hits' must be a 'Hits' object")
+
+  sspace <- space(subject)
+  hspace <- as.integer(sspace[subjectHits(hits)])
+  partitioning <- PartitioningByEnd(hspace, names=names(subject), NG=length(subject))
+  newCompressedList0("CompressedHitsList", unlistData=hits, partitioning=partitioning)
+}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion

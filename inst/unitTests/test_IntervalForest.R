@@ -36,6 +36,27 @@ test_IntervalForest_construction <- function() {
   checkException(IntervalForest(NULL, NULL), silent = TRUE)
 }
 
+test_CompressedHitsList <- function() {
+  query <- IRanges(c(1, 4, 9), c(5, 7, 10))
+  qpartition <- factor(c("a","b","a"))
+  ql <- split(query, qpartition)
+
+  subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
+  spartition <- factor(c("a","a","b"))
+  sl <- split(subject, spartition)
+
+  olaps <- findOverlaps(ql, sl)
+  rngs1 <- as(ranges(olaps, ql, sl),"CompressedIRangesList")
+
+  hits <- new2("Hits", queryHits=queryHits(olaps), subjectHits=subjectHits(olaps),
+                queryLength=nobj(ql@partitioning), subjectLength=nobj(sl@partitioning))
+
+  hl <- CompressedHitsList(hits, sl)
+  rngs2 <- ranges(hl@unlistData, ql@unlistData, sl@unlistData)
+  checkIdentical(rngs1@unlistData, rngs2)
+  checkIdentical(rngs1@partitioning, hl@partitioning)
+}
+
 test_IntervalForest_findOverlaps <- function() {
   DEACTIVATED()
   ## a .....
@@ -46,10 +67,12 @@ test_IntervalForest_findOverlaps <- function() {
   ## a         xxx
   query <- IRanges(c(1, 4, 9), c(5, 7, 10))
   qpartition <- factor(c("a","b","a"))
-  
+  ql <- split(query, qpartition)
+
   subject <- IRanges(c(2, 2, 10), c(2, 3, 12))
   spartition <- factor(c("a","a","b"))
-  
+  sl <- split(subject, spartition)
+
   tree <- IntervalForest(subject, spartition)
 
   result <- findOverlaps(query, tree, partition=qpartition, select = "first")
