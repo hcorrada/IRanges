@@ -130,7 +130,7 @@ setMethod("[", "IntervalForest",
 setMethod("show", "IntervalForest", 
           function(object) {
             newobj <- as(object, "CompressedIRangesList")
-            cat("IntervalForest of length ", length(newobject), "\n", sep="")
+            cat("IntervalForest of length ", length(newobj), "\n", sep="")
             showRangesList(newobj, with.header=FALSE)
           }
 )

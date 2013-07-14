@@ -33,6 +33,7 @@
 \alias{resize,RangesList-method}
 \alias{resize,IntervalList-method}
 \alias{resize,CompressedIRangesList-method}
+\alias{resize,IntervalForest-method}
 \alias{restrict}
 \alias{restrict,Ranges-method}
 \alias{restrict,RangesList-method}

@@ -257,8 +257,8 @@ subsetByOverlaps(query, subject, maxgap=0L, minoverlap=1L,
 \value{
   \code{findOverlaps} returns either a \link{Hits} object when
   \code{select="all"} (the default), or an integer vector when
-  \code{select} is not \code{"all"}. For \link{RangeList} objects
-  it returns a \link{HitsList} object when \code{select="all"}, or
+  \code{select} is not \code{"all"}. For \link{RangesList} objects
+  it returns a \link{HitsList-class} object when \code{select="all"}, or
   an \link{IntegerList} when \code{select} is not \code{"all"}. 
   When \code{subject} is an \link{IntervalForest} object, 
   it returns a \link{CompressedHitsList} or \link{CompressedIntegerList}

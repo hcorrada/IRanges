@@ -34,7 +34,7 @@
   the Interval Tree. The \code{IntervalForest} class stores a set of Interval Trees
   corresponding to intervals that are partitioned into disjoint sets. The most
   efficient way to construct \code{IntervalForest} objects is to call the constructor below
-  on a \link{CompressedIRangeList} object. See the \link{IntervalTree} class for the 
+  on a \link{CompressedIRangesList} object. See the \link{IntervalTree} class for the 
   underlying Interval Tree data structure.
 
   A canonical example of a compressed ranges list are \code{\link[GenomicRanges]{GenomicRanges}} 
