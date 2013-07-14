@@ -442,11 +442,12 @@ setMethod("countOverlaps", c("RangesList", "IntervalForest"),
           function(query, subject, maxgap = 0L, minoverlap = 1L,
                    type = c("any", "start", "end", "within", "equal"), drop = FALSE, ...)
           {
-            query <- as("CompressedIRangesList", query)
+            if (!is(query, "CompressedIRangesList"))
+              query <- as("CompressedIRangesList", query)
             hits <- findOverlaps(query, subject, maxgap = maxgap,
                                  minoverlap = minoverlap, type = type, ...)
             res <- tabulate(queryHits(hits), queryLength(hits))
-            newCompressedList0("CompressedIntegerList", unlistData=res, partitioning = query@partitioning)
+            new2("CompressedIntegerList", unlistData=res, partitioning = query@partitioning)
           })
   
 setMethod("countOverlaps", c("RangesList", "RangesList"),
@@ -672,7 +673,7 @@ setMethod("overlapsAny", c("Ranges", "Ranges"),
     {
         !is.na(findOverlaps(query, subject, maxgap=maxgap,
                             minoverlap=minoverlap, type=type,
-                            select="arbitrary", partition=partition, ...))
+                            select="arbitrary", ...))
     }
 )
 
@@ -725,6 +726,20 @@ setMethod("overlapsAny", c("RangesList", "RangesList"),
                                            maxgap=maxgap,
                                            minoverlap=minoverlap,
                                            type=type, ...)))
+    }
+)
+
+setMethod("overlapsAny", c("RangesList", "IntervalForest"),
+      function(query, subject, maxgap=0L, minoverlap=1L,
+             type=c("any", "start", "end", "within", "equal"), ...)
+    {
+
+      if (!is(query, "CompressedIRangesList"))
+        query <- as(query, "CompressedIRangesList")
+
+      !is.na(findOverlaps(query, subject, maxgap=maxgap,
+                            minoverlap=minoverlap, type=type,
+                            select="arbitrary", ...))
     }
 )
 

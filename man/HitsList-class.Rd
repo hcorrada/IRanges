@@ -17,6 +17,11 @@
 \alias{subjectHits,CompressedHitsList-method}
 \alias{queryHits,HitsList-method}
 \alias{queryHits,CompressedHitsList-method}
+\alias{queryLength,CompressedHitsList-method}
+\alias{subjectLength,CompressedHitsList-method}
+
+% constructor
+\alias{CompressedHitsList}
 
 \title{List of Hits objects}
 \description{The \code{HitsList} class stores a set of Hits objects.

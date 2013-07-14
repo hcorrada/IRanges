@@ -5,10 +5,23 @@
 % constructor
 \alias{IntervalForest}
 
+% coercion
+\alias{coerce,CompressedIRangesList,IntervalForest-method}
+\alias{coerce,IntervalForest,CompressedIRangesList-method}
+\alias{coerce,IntervalForest,IRanges-method}
+\alias{coerce,RangesList,IntervalForest-method}
+
 % accessors
 \alias{length,IntervalForest-method}
 \alias{start,IntervalForest-method}
 \alias{end,IntervalForest-method}
+\alias{width,IntervalForest-method}
+\alias{elementLengths,IntervalForest-method}
+\alias{names,IntervalForest-method}
+
+% methods
+\alias{[,IntervalForest-method}
+\alias{show,IntervalForest-method}
 
 \title{Interval Search Forests}
 \description{
