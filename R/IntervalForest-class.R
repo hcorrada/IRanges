@@ -3,7 +3,8 @@
 ### -------------------------------------------------------------------------
 
 setClass("IntervalForest", 
-         representation(ptr="externalptr", mode="character", partitioning="PartitioningByEnd"),
+         representation(ptr="externalptr", mode="character",
+                        partitioning="PartitioningByEnd"),
          contains = c("RangesList"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -57,16 +58,17 @@ setAs("IntervalForest", "CompressedIRangesList",
          check=FALSE)
 })
 
-setAs("IntervalForest", "IRanges", function(from) .IntervalForestCall(from, "asIRanges"))
+setAs("IntervalForest", "IRanges",
+      function(from) .IntervalForestCall(from, "asIRanges"))
 
-setAs("CompressedIRangesList", "IntervalForest",
-  function(from) {
+setAs("CompressedIRangesList", "IntervalForest", function(from) {
   validObject(from)
     
   npartitions <- length(from@partitioning)
   partitionLengths <- elementLengths(from)
   
-  ptr <- .Call2("IntegerIntervalForest_new", from@unlistData, partitionLengths, npartitions, PACKAGE="IRanges")
+  ptr <- .Call2("IntegerIntervalForest_new", from@unlistData, partitionLengths,
+                npartitions, PACKAGE="IRanges")
   new2("IntervalForest", 
        ptr = ptr, 
        mode="integer", 
@@ -74,7 +76,8 @@ setAs("CompressedIRangesList", "IntervalForest",
        check=FALSE)
 })
 
-setAs("RangesList", "IntervalForest", function(from) as(as(from, "CompressedIRangesList"), "IntervalForest"))
+setAs("RangesList", "IntervalForest",
+      function(from) as(as(from, "CompressedIRangesList"), "IntervalForest"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
@@ -93,7 +96,8 @@ setMethod("end", "IntervalForest",
 setMethod("width", "IntervalForest",
           function(x)
           new2("CompressedIntegerList",
-               unlistData = .IntervalForestCall(x, "end")-.IntervalForestCall(x, "start")+1L,
+               unlistData = .IntervalForestCall(x, "end") -
+                 .IntervalForestCall(x, "start") + 1L,
                partitioning = x@partitioning, check=FALSE))
 
 setMethod("elementLengths", "IntervalForest",

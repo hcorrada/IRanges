@@ -64,17 +64,18 @@ FilterRules.parseRule <- function(expr) {
   else stop("would not evaluate to logical: ", expr)
 }
 
-## takes logical expressions, or character vectors to parse
+## takes logical expressions, character vectors, or functions to parse
 
 FilterRules <- function(exprs = list(), ..., active = TRUE) {
   exprs <- c(as.list(substitute(list(...)))[-1L], exprs)
   if (length(names(exprs)) == 0) {
-    names(exprs) <- unlist(lapply(exprs, deparse))
-    chars <- unlist(sapply(exprs, is.character))
-    names(exprs)[chars] <- unlist(exprs[chars])
+    funs <- as.logical(sapply(exprs, is.function))
+    nonfuns <- exprs[!funs]
+    names(nonfuns) <- unlist(lapply(nonfuns, deparse))
+    chars <- as.logical(sapply(nonfuns, is.character))
+    names(nonfuns)[chars] <- unlist(nonfuns[chars])
+    names(exprs)[!funs] <- names(nonfuns)
   }
-  names(exprs) <- make.names(names(exprs), unique = TRUE)
-
   exprs <- lapply(exprs, FilterRules.parseRule)
 
   active <- rep(active, length.out = length(exprs))
@@ -235,7 +236,8 @@ setMethod("eval", signature(expr="FilterRules", envir="ANY"),
                     min(NROW(envir), length(val)) != 0)))
                 stop("filter rule evaluated to inconsistent length: ",
                      names(rule)[i])
-              envir <- subsetFirstDim(envir, val)
+              if (length(rules) > 1L)
+                envir <- subsetFirstDim(envir, val)
               result[result] <- val
             }
             result
@@ -259,7 +261,7 @@ setMethod("evalSeparately", "FilterRules",
             inds <- seq_len(length(expr))
             names(inds) <- names(expr)
             passed <- rep.int(TRUE, length(envir))
-            do.call(cbind, lapply(inds, function(i) {
+            m <- do.call(cbind, lapply(inds, function(i) {
               result <- eval(expr[i], envir = envir, enclos = enclos)
               if (serial) {
                 envir <<- subsetFirstDim(envir, result)
@@ -267,6 +269,7 @@ setMethod("evalSeparately", "FilterRules",
                 passed
               } else result
             }))
+            FilterMatrix(matrix = m, filterRules = expr)
           })
 
 setGeneric("subsetByFilter",
@@ -286,19 +289,8 @@ setMethod("summary", "FilterRules",
           {
             if (!isTRUEorFALSE(serial))
               stop("'serial' must be TRUE or FALSE")
-            if (!isTRUEorFALSE(discarded))
-              stop("'discarded' must be TRUE or FALSE")
-            if (!isTRUEorFALSE(percent))
-              stop("'percent' must be TRUE or FALSE")
             mat <- evalSeparately(object, subject, serial = serial)
-            counts <- c("<initial>" = length(subject), colSums(mat),
-                        "<final>" = sum(rowSums(mat) == ncol(mat)))
-            if (discarded) {
-              counts <- length(subject) - counts
-            }
-            if (percent) {
-              round(counts / length(subject), 3)
-            } else counts
+            summary(mat, discarded = discarded, percent = percent)
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -358,6 +350,21 @@ setMethod("[", "FilterMatrix", function(x, i, j, ..., drop = TRUE) {
   ans
 })
 
+setMethod("rbind", "FilterMatrix", function(..., deparse.level = 1) {
+  ans <- base::rbind(...)
+  args <- list(...)
+  rulesList <- lapply(args, filterRules)
+  if (any(!sapply(rulesList, identical, rulesList[[1]])))
+    stop("cannot rbind filter matrices with non-identical rule sets")
+  FilterMatrix(matrix = ans, filterRules = rulesList[[1]])
+})
+
+setMethod("cbind", "FilterMatrix", function(..., deparse.level = 1) {
+  ans <- base::cbind(...)
+  rules <- do.call(c, lapply(list(...), function(x) x@filterRules))
+  FilterMatrix(matrix = ans, filterRules = rules)
+})
+
 FilterMatrix <- function(..., filterRules, matrix = base::matrix(...)) {
   stopifnot(ncol(matrix) == length(filterRules))  
   if (is.null(colnames(matrix)))
@@ -375,3 +382,20 @@ setMethod("show", "FilterMatrix", function(object) {
   mat <- makePrettyMatrixForCompactPrinting(object, function(x) x@.Data)
   print(mat, quote = FALSE, right = TRUE)
 })
+
+setMethod("summary", "FilterMatrix",
+          function(object, discarded = FALSE, percent = FALSE)
+          {
+            if (!isTRUEorFALSE(discarded))
+              stop("'discarded' must be TRUE or FALSE")
+            if (!isTRUEorFALSE(percent))
+              stop("'percent' must be TRUE or FALSE")
+            counts <- c("<initial>" = nrow(object), colSums(object),
+                        "<final>" = sum(rowSums(object) == ncol(object)))
+            if (discarded) {
+              counts <- nrow(object) - counts
+            }
+            if (percent) {
+              round(counts / nrow(object), 3)
+            } else counts
+          })

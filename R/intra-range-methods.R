@@ -577,15 +577,18 @@ setMethod("restrict", "CompressedIRangesList",
 
 setMethod("restrict", "IntervalForest",
           function(x, start = NA, end = NA, keep.all.ranges = FALSE,
-                   use.names = TRUE) {
+                   use.names = TRUE)
+          {
             if (keep.all.ranges)
-              stop("'keep.all.ranges' must be FALSE in 'restrict,IntervalForest'")
+              stop("'keep.all.ranges' must be FALSE in ",
+                   "'restrict,IntervalForest'")
               
             as(restrict(as(x, "CompressedIRangesList"),
-                        start = start, end = end, keep.all.ranges = keep.all.ranges,
+                        start = start, end = end,
+                        keep.all.ranges = keep.all.ranges,
                         use.names = use.names),
-              "IntervalForest")
-            })
+               "IntervalForest")
+          })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### The "threebands" method.
