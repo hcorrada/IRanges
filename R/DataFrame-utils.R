@@ -75,7 +75,7 @@ setMethod("rbind", "DataFrame", function(..., deparse.level=1) {
       combined
     })
     names(cols) <- colnames(df)
-    ans <- do.call(DataFrame, cols)
+    ans <- DataFrame(cols)
   }
 
   rn <- unlist(lapply(args, rownames), use.names=FALSE)
@@ -104,7 +104,7 @@ setMethod("aggregate", "formula", function(x, data, ...) {
   mc <- sys.call(-1)
   mc[[1]] <- quote(stats:::aggregate.formula)
   if (is(data, "DataFrame")) {
-    data <- as.data.frame(data)
+    data <- as(data, "data.frame")
     ## depending on the formula, this may or not be a valid subclass
     ## of DataFrame, so we just explicitly create a DataFrame here
     ##DataFrame(callGeneric())

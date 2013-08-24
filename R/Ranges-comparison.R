@@ -7,19 +7,13 @@
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### compare()
 ###
-### Doing 'compare(x, y)' on 2 vector-like objects 'x' and 'y' of length 1
-### must return an integer less than, equal to, or greater than zero if the
-### single element in 'x' is considered to be respectively less than, equal
-### to, or greater than the single element in 'y'.
-###
-
-setGeneric("compare", function(x, y) standardGeneric("compare"))
-
 ### Ranges are ordered by starting position first and then by width.
 ### This way, the space of ranges is totally ordered.
 ### This "compare" method returns one of the 13 predefined codes (>= -6 and
 ### <= 6) described in the man page. The signs of those codes reflect this
 ### order.
+###
+
 setMethod("compare", c("Ranges", "Ranges"),
     function(x, y)
     {
@@ -41,49 +35,7 @@ rangeComparisonCodeToLetter <- function(code)
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Element-wise (aka "parallel") comparison of 2 Ranges objects.
-###
-### We only need to implement "==" and "<=" methods. The other comparison
-### binary operators (!=, >=, <, >) will then work out-of-the-box on
-### Ranges objects thanks to the methods for Vector objects.
-###
-
-setMethod("==", signature(e1="Ranges", e2="Ranges"),
-    function(e1, e2) { compare(e1, e2) == 0L }
-)
-
-setMethod("<=", signature(e1="Ranges", e2="Ranges"),
-    function(e1, e2) { compare(e1, e2) <= 0L }
-)
-
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### duplicated()
-###
-### unique() will work out-of-the-box on a Ranges object thanks to the
-### method for Vector objects.
-###
-
-.duplicated.Ranges <- function(x, incomparables=FALSE, fromLast=FALSE,
-                               method=c("auto", "quick", "hash"))
-{
-    if (!identical(incomparables, FALSE))
-        stop("\"duplicated\" method for Ranges objects ",
-             "only accepts 'incomparables=FALSE'")
-    duplicatedIntegerPairs(start(x), width(x),
-                           fromLast=fromLast, method=method)
-}
-### S3/S4 combo for duplicated.Ranges
-duplicated.Ranges <- function(x, incomparables=FALSE, ...)
-    .duplicated.Ranges(x, incomparables=incomparables, ...)
-setMethod("duplicated", "Ranges", .duplicated.Ranges)
-
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### match()
-###
-### %in% will work out-of-the-box on Ranges objects thanks to the method
-### for Vector objects.
 ###
 
 `%in%.warning.msg` <- function(classname)
@@ -139,10 +91,45 @@ setMethod("match", c("Ranges", "Ranges"),
     }
 )
 
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### selfmatch()
+###
+
+### 'match.if.overlap' arg is ignored.
+### TODO: Defunct 'match.if.overlap' arg in BioC 2.14.
+setMethod("selfmatch", "Ranges",
+    function(x, method=c("auto", "quick", "hash"), match.if.overlap=FALSE)
+        selfmatchIntegerPairs(start(x), width(x), method=method)
+)
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### duplicated()
+###
+### duplicated() would normally work out-of-the-box on Ranges objects thanks
+### to the method for Vector objects. However the method for AtomicList
+### vector is in the way and breaks this grand scheme. So we need to override
+### it with a specific method for Ranges objects that calls the method for
+### Vector objects.
+###
+
+### S3/S4 combo for duplicated.Ranges
+duplicated.Ranges <- duplicated.Vector
+setMethod("duplicated", "Ranges", duplicated.Ranges)
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### %in%
+###
+### %in% will work out-of-the-box on Ranges objects thanks to the method
+### for Vector objects.
 ### The only reason for overriding the method for Vector objects is to issue
 ### the warning.
-### TODO: Remove this method in BioC 2.14 when the 'match.if.overlap' arg of
-### match() is defunct.
+### TODO: Remove this method in BioC 2.14 when the 'match.if.overlap' arg
+### of match() is defunct.
+###
+
 setMethod("%in%", c("Ranges", "Ranges"),
     function(x, table)
     {
@@ -153,74 +140,17 @@ setMethod("%in%", c("Ranges", "Ranges"),
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### findMatches(), countMatches()
+### findMatches() & countMatches()
+###
+### findMatches() & countMatches() will work out-of-the-box on Ranges objects
+### thanks to the methods for Vector objects.
+### The only reason for defining the 2 methods below is to prevent the
+### warnings that otherwise would be issued when the user calls findMatches()
+### or countMatches() on Ranges objects.
+### TODO: Remove these methods in BioC 2.14 when the 'match.if.overlap' arg
+### of match() is defunct.
 ###
 
-setGeneric("findMatches", signature=c("x", "table"),
-    function(x, table, select=c("all", "first", "last"), ...)
-        standardGeneric("findMatches")
-)
-
-### Problem: using transpose=TRUE generates an invalid Hits object (hits are
-### not ordered):
-###   > IRanges:::.findAllMatchesInSmallTable(1:6, c(7:5, 4:5), transpose=TRUE)
-###   Hits of length 4
-###   queryLength: 5
-###   subjectLength: 6
-###     queryHits subjectHits 
-###      <integer>   <integer> 
-###    1         4           4 
-###    2         3           5 
-###    3         5           5 
-###    4         2           6
-### and the cost of ordering them would probably defeat the purpose of the
-### "put the smallest object on the right" optimization trick.
-.findAllMatchesInSmallTable <- function(x, table, ..., transpose=FALSE)
-{
-    x2 <- match(x, table, ...)
-    table2 <- match(table, table, ...)
-    table_low2high <- makeLow2highFromHigh2low(table2)
-    hits_per_x <- table_low2high[x2]
-    x_hits <- rep.int(seq_along(hits_per_x),
-                      elementLengths(hits_per_x))
-    if (length(x_hits) == 0L) {
-        table_hits <- integer(0)
-    } else {
-        table_hits <- unlist(hits_per_x, use.names=FALSE)
-    }
-    if (transpose) {
-        new2("Hits", queryHits=table_hits, subjectHits=x_hits,
-                     queryLength=length(table), subjectLength=length(x),
-                     check=FALSE)
-    } else {
-        new2("Hits", queryHits=x_hits, subjectHits=table_hits,
-                     queryLength=length(x), subjectLength=length(table),
-                     check=FALSE)
-    }
-}
-
-### Default "findMatches" method. Args in ... are passed down to match().
-setMethod("findMatches", c("ANY", "ANY"),
-    function(x, table, select=c("all", "first", "last"), ...)
-    {
-        select <- match.arg(select)
-        if (select != "all")
-            stop("'select' is not supported yet. Note that you can use ",
-                 "match() if you want to do 'select=\"first\"'. Otherwise ",
-                 "you're welcome to request this on the Bioconductor ",
-                 "mailing list.")
-        ## "put the smallest object on the right" optimization trick
-        #if (length(x) < length(table))
-        #    return(.findAllMatchesInSmallTable(table, x, ..., transpose=TRUE))
-        .findAllMatchesInSmallTable(x, table, ...)
-    }
-)
-
-### The only reason for defining this method is to prevent the warning that
-### otherwise would be issued when the user calls findMatches() on Ranges
-### objects.
-### TODO: Remove this method in BioC 2.14 when the 'match.if.overlap' arg of
-### match() is defunct.
 setMethod("findMatches", c("Ranges", "Ranges"),
     function(x, table, select=c("all", "first", "last"), ...)
     {
@@ -234,37 +164,6 @@ setMethod("findMatches", c("Ranges", "Ranges"),
     }
 )
 
-### Equivalent to 'countQueryHits(findMatches(x, table))' but the default
-### method below has a more efficient implementation.
-setGeneric("countMatches", signature=c("x", "table"),
-    function(x, table, ...)
-        standardGeneric("countMatches")
-)
-
-### Default "countMatches" method. Args in ... are passed down to match().
-.countMatches.default <- function(x, table, ...)
-{
-    x_len <- length(x)
-    table_len <- length(table)
-    if (x_len <= table_len) {
-        table2 <- match(table, x, ...)  # can contain NAs
-        nbins <- x_len
-        x2 <- match(x, x, ...)  # no NAs
-    } else {
-        table2 <- match(table, table, ...)  # no NAs
-        nbins <- table_len + 1L
-        x2 <- match(x, table, nomatch=nbins, ...)
-    }
-    tabulate(table2, nbins=nbins)[x2]
-}
-
-setMethod("countMatches", c("ANY", "ANY"), .countMatches.default)
-
-### The only reason for defining this method is to prevent the warning that
-### otherwise would be issued when the user calls countMatches() on Ranges
-### objects.
-### TODO: Remove this method in BioC 2.14 when the 'match.if.overlap' arg of
-### match() is defunct.
 setMethod("countMatches", c("Ranges", "Ranges"),
     function(x, table, ...)
         .countMatches.default(x, table, match.if.overlap=FALSE, ...)
@@ -274,10 +173,8 @@ setMethod("countMatches", c("Ranges", "Ranges"),
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### order() and related methods.
 ###
-### The "order" and "rank" methods for Ranges objects are consistent with the
-### order implied by compare().
-### sort() will work out-of-the-box on a Ranges object thanks to the method
-### for Vector objects.
+### The "order" and "rank" methods for Ranges objects are consistent with
+### the order implied by compare().
 ###
 
 setMethod("order", "Ranges",

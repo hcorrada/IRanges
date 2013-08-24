@@ -31,7 +31,7 @@ setMethod("rownames", "DataFrame",
             rn <- x@rownames
             if (is.null(rn) && !do.NULL) {
               nr <- NROW(x)
-              if (nr > 0L) 
+              if (nr > 0L)
                 rn <- paste(prefix, seq_len(nr), sep = "")
               else
                 rn <- character(0L)
@@ -50,7 +50,7 @@ setMethod("colnames", "DataFrame",
             if (length(x@listData) != 0L)
                 stop("DataFrame object with NULL colnames, please fix it ",
                      "with colnames(x) <- value")
-            return(character(0)) 
+            return(character(0))
           })
 
 setReplaceMethod("rownames", "DataFrame",
@@ -73,7 +73,7 @@ setReplaceMethod("rownames", "DataFrame",
 setReplaceMethod("colnames", "DataFrame",
                  function(x, value)
                  {
-                   if (!is.character(value)) 
+                   if (!is.character(value))
                        stop("'value' must be a character vector ",
                             "in colnames(x) <- value")
                    if (length(value) > length(x))
@@ -140,17 +140,15 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
   varlist <- vector("list", length(listData))
   if (length(listData) > 0) {
     dotnames <- names(listData)
-    dotvalues <- 
-      sapply(as.list(substitute(list(...)))[-1L],
-             function(arg) deparse(arg)[1L])
     if (is.null(dotnames)) {
       emptynames <- rep.int(TRUE, length(listData))
-      names(listData) <- dotvalues
     } else {
       emptynames <- !nzchar(dotnames)
-      if (any(emptynames)) {
-        names(listData)[emptynames] <- dotvalues[emptynames]
-      }
+    }
+    if (any(emptynames)) {
+      qargs <- as.list(substitute(list(...)))[-1L]
+      dotvalues <- sapply(qargs[emptynames], function(arg) deparse(arg)[1L])
+      names(listData)[emptynames] <- dotvalues
     }
     varnames <- as.list(names(listData))
     nrows <- ncols <- integer(length(varnames))
@@ -171,6 +169,8 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
           varnames[[i]] <- paste(varnames[[i]], colnames(element), sep = ".")
       } else if (is.list(listData[[i]]) && length(names(listData[[i]])))
           varnames[[i]] <- names(element)
+      if (is.null(row.names))
+        row.names <- rownames(element)
     }
     nr <- max(nrows)
     for (i in which((nrows > 0L) & (nrows < nr) & (nr %% nrows == 0L))) {
@@ -186,7 +186,7 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
       nms <- make.names(nms, unique = TRUE)
     names(varlist) <- nms
   } else names(varlist) <- character(0)
-  
+
   if (!is.null(row.names)) {
     if (anyMissing(row.names))
       stop("missing values in 'row.names'")
@@ -196,7 +196,7 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
       stop("duplicate row names")
     row.names <- as.character(row.names)
   }
-  
+
   new2("DataFrame", listData=varlist, rownames=row.names,
        nrows=as.integer(max(nr, length(row.names))), check=FALSE)
 }
@@ -267,7 +267,7 @@ setMethod("[", "DataFrame",
 
             ## no ',' -- forward to list
             ## NOTE: matrix-style subsetting by logical matrix not supported
-            if ((nargs() - !missing(drop)) < 3) { 
+            if ((nargs() - !missing(drop)) < 3) {
               if (!missing(drop))
                 warning("parameter 'drop' ignored by list-style subsetting")
               if (missing(i))
@@ -318,7 +318,7 @@ setMethod("[", "DataFrame",
               drop <- dim[2L] == 1
             if (drop) {
               ## one column left
-              if (dim[2L] == 1) 
+              if (dim[2L] == 1)
                 return(x[[1L]])
               ## one row left
               if (dim[1L] == 1)
@@ -400,8 +400,8 @@ setReplaceMethod("[", "DataFrame",
                        if (length(newrn) == 0L && li > 0L && max(i) > nrow(x))
                          newrn <- as.character(seq.int(nrow(x) + 1L, max(i)))
                        if (length(x@listData[j][[1]]) == 0L)
-                         x@listData[j] <- list(rep(NA, nrow(x))) 
-                       x@listData[j] <- 
+                         x@listData[j] <- list(rep(NA, nrow(x)))
+                       x@listData[j] <-
                          lapply(x@listData[j], function(y) {y[i] <- value; y})
                      } else {
                        x@listData[j] <- list(value)
@@ -446,7 +446,7 @@ setReplaceMethod("[", "DataFrame",
                          rv <- value[[vc[k]]]
                          if (length(dim(rv)) == 2)
                            v[i,] <- rv
-                         else v[i] <- rv
+                         else v[i] <- if (is.null(v)) rv else as(rv, class(v))
                          x@listData[[j[k]]] <- v
                        }
                      } else {
@@ -513,7 +513,7 @@ setMethod("seqselect", "DataFrame",
 ## Break DataFrame into a normal R data.frame
 setAs("DataFrame", "data.frame",
       function(from) {
-        as.data.frame(from)
+        as.data.frame(from, optional=TRUE)
       })
 
 injectIntoScope <- function(x, ...) {
@@ -522,25 +522,31 @@ injectIntoScope <- function(x, ...) {
   x
 }
 
-setMethod("as.data.frame", "DataFrame",
-          function(x, row.names=NULL, optional=FALSE, ...)
-          {
-            l <- as(x, "list")
-            if (is.null(row.names))
-              row.names <- rownames(x)
-            if (!length(l) && is.null(row.names))
-              row.names <- seq_len(nrow(x))
-            l <- lapply(l,
-                   function(y) {
-                     if (is(y, "SimpleList") || is(y, "CompressedList"))
-                       y <- as.list(y)
-                     if (is.list(y))
-                       y <- I(y)
-                     y
-                   })
-            IRanges.data.frame <- injectIntoScope(data.frame, as.data.frame)
-            do.call(IRanges.data.frame, c(l, list(row.names = row.names)))
-          })
+as.data.frame.DataFrame <- 
+  function(x, row.names=NULL, optional=FALSE, ...)
+{
+    if (length(list(...)))
+        warning("Arguments in '...' ignored")
+    l <- as(x, "list")
+    if (is.null(row.names))
+        row.names <- rownames(x)
+    if (!length(l) && is.null(row.names))
+        row.names <- seq_len(nrow(x))
+    l <- lapply(l,
+                function(y) {
+                    if (is(y, "SimpleList") || is(y, "CompressedList"))
+                        y <- as.list(y)
+                    if (is.list(y))
+                        y <- I(y)
+                    y
+                })
+    IRanges.data.frame <- injectIntoScope(data.frame, as.data.frame)
+    do.call(IRanges.data.frame,
+            c(l, list(row.names=row.names),
+              check.names=!optional, stringsAsFactors=FALSE))
+}
+
+setMethod("as.data.frame", "DataFrame", as.data.frame.DataFrame)
 
 setMethod("as.matrix", "DataFrame", function(x) {
   if (length(x) == 0L)
@@ -585,8 +591,9 @@ setAs("xtabs", "DataFrame",
       })
 
 .defaultAsDataFrame <- function(from) {
+  row.names <- if (!anyDuplicated(names(from))) names(from) else NULL
   new2("DataFrame", listData = setNames(list(from), "X"),
-       nrows = length(from), rownames = names(from), check=FALSE)
+       nrows = length(from), rownames = row.names, check=FALSE)
 }
 
 setAs("ANY", "DataFrame", .defaultAsDataFrame)
