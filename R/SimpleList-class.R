@@ -53,57 +53,47 @@ SimpleList <- function(...) {
 }
 setValidity2("SimpleList", .valid.SimpleList)
 
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Subsetting.
 ###
 
-setMethod("extractElements", "SimpleList", function(x, i) {
-  initialize(x,
-             elementMetadata =
-             seqselect(x@elementMetadata, i),
-             listData = as.list(x)[i])
-})
+setMethod("extractROWS", "SimpleList",
+    function(x, i)
+    {
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x)
+        initialize(x, listData=extractROWS(x@listData, i),
+                      elementMetadata=extractROWS(x@elementMetadata, i))
+    }
+)
 
-setMethod("replaceElements", "SimpleList", function(x, i, value) {
-  x@listData[i] <- value@listData
-  x
-})
+setMethod("replaceROWS", "SimpleList",
+    function(x, i, value)
+    {
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x)
+        initialize(x, listData=replaceROWS(x@listData, i, value@listData))
+    }
+)
 
-## Slightly? optimized List-indexed extraction
-setMethod("extractElements", c("SimpleList", "RangesList"), function(x, i) {
-  indices <- structure(seq_len(length(x)), names = names(x))
-  listData <- lapply(indices,
-                     function(j) subsetByRanges(x@listData[[j]], i[[j]]))
-  slot(x, "listData", check=FALSE) <- listData
-  x
-})
-setMethod("extractElements", c("SimpleList", "AtomicList"), function(x, i) {
-  indices <- structure(seq_len(length(x)), names = names(x))
-  listData <- lapply(indices, function(j)
-                     extractROWS(x@listData[[j]], i[[j]]))
-  slot(x, "listData", check=FALSE) <- listData
-  x
-})
+setMethod("getListElement", "SimpleList",
+    function(x, i, exact=TRUE)
+    {
+        i <- normalizeDoubleBracketSubscript(i, x, exact=exact,
+                                             error.if.nomatch=FALSE)
+        x@listData[[i]]
+    }
+)
 
-## Slightly? optimized List-indexed replacement
-setMethod("replaceElements", c("SimpleList", "List"), function(x, i, value) {
-  x@listData <-
-    lapply(indices, function(j) {
-      y <- x@listData[[j]]
-      seqselect(y, i[[j]]) <- value[[j]]
-      y
-    })
-  x
-})
+setMethod("setListElement", "SimpleList",
+    function(x, i, value)
+    {
+        x@listData[[i]] <- value
+        x
+    }
+)
 
-setMethod("extractElement", "SimpleList", function(x, i) {
-  as.list(x)[[i]]
-})
-
-setMethod("replaceElement", "SimpleList", function(x, i, value) {
-  x@listData[[i]] <- value
-  x
-})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Combining and splitting.

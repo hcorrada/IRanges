@@ -24,11 +24,7 @@
 \alias{as.data.frame.GappedRanges}
 \alias{as.data.frame,GappedRanges-method}
 \alias{show,GappedRanges-method}
-\alias{[[,GappedRanges-method}
 \alias{elementLengths,GappedRanges-method}
-\alias{[,GappedRanges-method}
-\alias{seqselect,GappedRanges-method}
-\alias{window,GappedRanges-method}
 \alias{c,GappedRanges-method}
 
 

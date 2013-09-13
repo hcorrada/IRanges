@@ -24,10 +24,8 @@
 \alias{as.data.frame,Ranges-method}
 \alias{as.integer,Ranges-method}
 \alias{unlist,Ranges-method}
-\alias{[[,Ranges-method}
 \alias{show,Ranges-method}
 \alias{showAsCell,Ranges-method}
-\alias{[,Ranges-method}
 \alias{isNormal}
 \alias{isNormal,Ranges-method}
 \alias{whichFirstNotNormal}

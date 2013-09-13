@@ -18,7 +18,6 @@
 \alias{end<-,Views-method}
 \alias{width<-,Views-method}
 \alias{names<-,Views-method}
-\alias{[,Views-method}
 \alias{elementLengths,Views-method}
 \alias{newViews}
 \alias{Views}
@@ -27,7 +26,7 @@
 \alias{coerce,Views,IRanges-method}
 \alias{coerce,Views,NormalIRanges-method}
 \alias{as.matrix,Views-method}
-\alias{[[,Views-method}
+\alias{c,Views-method}
 \alias{trim}
 \alias{trim,Views-method}
 \alias{subviews}
@@ -98,14 +97,11 @@
   }
 }
 
-\section{Subsetting and appending}{
-  \code{"["}, \code{c} and \code{"[["} work on a Views object.
-  The first two operations are just inherited from the
-  \code{IRanges} class but now they return a Views object.
-  However, the \code{"[["} method for Views objects has a
-  different semantic than the method for \code{IRanges} objects.
-
+\section{Subsetting}{
   \describe{
+    \item{}{
+      \code{x[i]}: Select the views specified by \code{i}.
+    }
     \item{}{
       \code{x[[i]]}:
       Extracts the view selected by \code{i} as an object of the same class
@@ -115,6 +111,15 @@
       \code{window(subject(x), start=start(x)[i], end=end(x)[i])}
       or an error if the view is "out of limits" (i.e. \code{start(x)[i] < 1}
       or \code{end(x)[i] > length(subject(x))}).
+    }
+  }
+}
+
+\section{Combining}{
+  \describe{
+    \item{}{
+      \code{c(x, ..., ignore.mcols=FALSE)}: Combine \code{Views} objects.
+      They must have the same subject.
     }
   }
 }

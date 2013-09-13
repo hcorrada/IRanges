@@ -33,7 +33,6 @@
 \alias{low2high,H2LGrouping-method}
 \alias{length,H2LGrouping-method}
 \alias{nobj,H2LGrouping-method}
-\alias{[[,H2LGrouping-method}
 \alias{grouplength,H2LGrouping-method}
 \alias{members,H2LGrouping-method}
 \alias{vmembers,H2LGrouping-method}
@@ -49,6 +48,7 @@
 \alias{Dups}
 
 \alias{duplicated,Dups-method}
+\alias{duplicated.Dups}
 \alias{show,Dups-method}
 
 % Partitioning objects:
@@ -56,7 +56,6 @@
 \alias{Partitioning-class}
 \alias{Partitioning}
 
-\alias{[[,Partitioning-method}
 \alias{grouplength,Partitioning-method}
 \alias{names,Partitioning-method}
 \alias{names<-,Partitioning-method}
@@ -83,6 +82,7 @@
 \alias{start,PartitioningByWidth-method}
 \alias{coerce,Ranges,PartitioningByWidth-method}
 
+\alias{relist,ANY,PartitioningByEnd-method}
 
 \title{Grouping objects}
 

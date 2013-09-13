@@ -19,8 +19,8 @@
     x
 }
 
-### Some of the functions that support the SEW0 interface: IRanges(),
-### seqselect(), Views(), etc...
+### Some of the functions that support the SEW0 interface: IRanges(), Views(),
+### etc...
 solveUserSEW0 <- function(start=NULL, end=NULL, width=NULL)
 {
     start <- .normargSEW0(start, "start")
@@ -181,7 +181,7 @@ solveUserSEW <- function(refwidths, start=NA, end=NA, width=NA,
 }
 
 ### Returns an IRanges instance of length 1. Not exported.
-solveUserSEWForSingleSeq <- function(x_length, start, end, width)
+solveUserSEWForSingleSeq <- function(x_length, start=NA, end=NA, width=NA)
 {
     solved_SEW <-
       try(solveUserSEW(x_length, start=start, end=end, width=width),

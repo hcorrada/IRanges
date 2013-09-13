@@ -28,22 +28,23 @@
 \alias{[,Vector-method}
 \alias{[<-,Vector-method}
 \alias{window,Vector-method}
-\alias{window,NULL-method}
+\alias{window.Vector}
 \alias{window,vector-method}
+\alias{window.vector}
 \alias{window,factor-method}
+\alias{window.factor}
+\alias{window,NULL-method}
+\alias{window.NULL}
 \alias{window<-,Vector-method}
+\alias{window<-.Vector}
 \alias{window<-,vector-method}
+\alias{window<-.vector}
 \alias{window<-,factor-method}
+\alias{window<-.factor}
 \alias{seqselect}
-\alias{seqselect,Vector-method}
-\alias{seqselect,NULL-method}
 \alias{seqselect,ANY-method}
-\alias{seqselect,vector-method}
-\alias{seqselect,factor-method}
 \alias{seqselect<-}
-\alias{seqselect<-,Vector-method}
-\alias{seqselect<-,vector-method}
-\alias{seqselect<-,factor-method}
+\alias{seqselect<-,ANY-method}
 
 \alias{head,Vector-method}
 \alias{tail,Vector-method}
@@ -55,11 +56,13 @@
 \alias{c,Vector-method}
 \alias{append,Vector,Vector-method}
 
-\alias{split,Vector-method}
+\alias{split,Vector,Vector-method}
+\alias{split,ANY,Vector-method}
 \alias{mstack}
 \alias{mstack,Vector-method}
 \alias{mstack,vector-method}
 \alias{split<-,Vector-method}
+\alias{relist,ANY,Vector,list-method}
 
 \alias{tapply,Vector-method}
 \alias{shiftApply}
@@ -174,8 +177,8 @@
 
 \section{Subsetting}{
   In the code snippets below, \code{x} is a Vector object or regular R vector
-  object. The R vector object methods for \code{window} and \code{seqselect}
-  are defined in this package and the remaining methods are defined in base R.
+  object. The R vector object methods for \code{window} are defined in this
+  package and the remaining methods are defined in base R.
 
   \describe{
     \item{}{
@@ -188,10 +191,10 @@
     }
     \item{}{
       \code{x[i] <- value}:
-      Equivalent to \code{seqselect(x, i) <- value}.
+      Replacement version of \code{x[i]}.
     }
     \item{}{
-      \code{window(x, start = NA, end = NA, width = NA, frequency = NULL, delta = NULL, ...)}:
+      \code{window(x, start=NA, end=NA, width=NA, frequency=NULL, delta=NULL, ...)}:
       Extract the subsequence window from the Vector object using:
       \describe{
         \item{\code{start}, \code{end}, \code{width}}{The start, end, or width
@@ -202,7 +205,7 @@
       In general, this is more efficient than using \code{"["} operator.
     }
     \item{}{
-      \code{window(x, start = NA, end = NA, width = NA, keepLength = TRUE) <- value}:
+      \code{window(x, start=NA, end=NA, width=NA, keepLength=TRUE) <- value}:
       Replace the subsequence window specified on the left (i.e. the subsequence
       in \code{x} specified by \code{start}, \code{end} and \code{width})
       by \code{value}.
@@ -214,27 +217,6 @@
       If \code{keepLength} is \code{FALSE}, this replacement method can modify
       the length of \code{x}, depending on how the length of the left
       subsequence window compares to the length of \code{value}.
-    }
-    \item{}{
-      \code{seqselect(x, start=NULL, end=NULL, width=NULL)}:
-      Similar to \code{window}, except that multiple consecutive subsequences
-      can be requested for concatenation. As such two of the three \code{start},
-      \code{end}, and \code{width} arguments can be used to specify the
-      consecutive subsequences. Alternatively, \code{start} can take a Ranges
-      object or something that can be converted to a Ranges object like an
-      integer vector, logical vector or logical Rle. If the concatenation of
-      the consecutive subsequences is undesirable, consider using
-      \code{\link{Views}}.
-    }
-    \item{}{
-      \code{seqselect(x, start=NULL, end=NULL, width=NULL) <- value}:
-      Similar to \code{window<-}, except that multiple consecutive subsequences
-      can be replaced by a \code{value} whose length is a divisor of the number
-      of elements it is replacing. As such two of the three \code{start},
-      \code{end}, and \code{width} arguments can be used to specify the
-      consecutive subsequences. Alternatively, \code{start} can take a Ranges
-      object or something that can be converted to a Ranges object like an
-      integer vector, logical vector or logical Rle.
     }
     \item{}{
       \code{split(x, f, drop = FALSE) <- value}: Virtually

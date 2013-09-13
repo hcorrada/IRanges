@@ -17,10 +17,8 @@
 \alias{dimnames,DataTable-method}
 \alias{dimnames<-,DataTable-method}
 
-\alias{window,DataTable-method}
 \alias{window<-,DataTable-method}
-\alias{seqselect,DataTable-method}
-\alias{seqselect<-,DataTable-method}
+\alias{window<-.DataTable}
 \alias{head,DataTable-method}
 \alias{tail,DataTable-method}
 \alias{subset,DataTable-method}
@@ -43,7 +41,9 @@
 \alias{as.env,DataTable-method}
 
 \alias{duplicated,DataTable-method}
+\alias{duplicated.DataTable}
 \alias{unique,DataTable-method}
+\alias{unique.DataTable}
 
 \alias{show,DataTable-method}
 \alias{get_showHeadLines}
@@ -96,19 +96,7 @@
       to coerce the returned sequence to a standard vector.
     }
     \item{}{
-      \code{window(x, start = NA, end = NA, width = NA, frequency = NULL, delta = NULL, ...)}:
-      Extract the subsequence window from the DataTable object using:
-      \describe{
-        \item{\code{start}, \code{end}, \code{width}}{The start, end, or width
-          of the window. Two of the three are required.}
-        \item{\code{frequency}, \code{delta}}{Optional arguments that specify
-          the sampling frequency and increment within the window.}
-      }
-      In general, this is more efficient than using \code{"["} operator.
-    }
-    \item{}{
-      \code{window(x, start = NA, end = NA, width = NA, keepLength =
-        TRUE) <- value}:
+      \code{window(x, start=NA, end=NA, width=NA, keepLength=TRUE) <- value}:
       Replace the subsequence window specified on the left (i.e. the subsequence
       in \code{x} specified by \code{start}, \code{end} and \code{width})
       by \code{value}.
@@ -120,16 +108,6 @@
       If \code{keepLength} is \code{FALSE}, this replacement method can modify
       the number of rows of \code{x}, depending on how the number of rows of the
       left subsequence window compares to the number of rows of \code{value}.
-    }
-    \item{}{
-      \code{seqselect(x, start=NULL, end=NULL, width=NULL)}:
-      Similar to \code{window}, except that multiple subsequences can be
-      requested. The requested subsequences are concatenated.
-    }
-    \item{}{
-      \code{seqselect(x, start=NULL, end=NULL, width=NULL) <- value}:
-      Similar to \code{window<-}, except that multiple consecutive subsequences
-      can be replaced by a \code{value} that spans those windows.
     }
     \item{}{
       \code{head(x, n = 6L)}:

@@ -428,134 +428,38 @@ setMethod("update", "IRanges",
 ### Subsetting.
 ###
 
-### Always behaves like an endomorphism (i.e. ignores the 'drop' argument and
-### behaves like if it was actually set to FALSE).
-setMethod("[", "IRanges",
-    function(x, i, j, ..., drop=TRUE)
+setMethod("extractROWS", "IRanges",
+    function(x, i)
     {
-        if (!missing(j) || length(list(...)) > 0L)
-            stop("invalid subsetting")
-        if (missing(i))
-            i <- seq_len(length(x))
-        else
+        if (missing(i) || !is(i, "Ranges"))
             i <- normalizeSingleBracketSubscript(i, x)
-        slot(x, "start", check=FALSE) <- start(x)[i]
-        slot(x, "width", check=FALSE) <- width(x)[i]
-        if (!is.null(names(x)))
-            slot(x, "NAMES", check=FALSE) <- names(x)[i]
-        mcols(x) <- mcols(x)[i, , drop=FALSE]
-        x
-    }
-)
-
-setReplaceMethod("[", "IRanges",
-    function(x, i, j,..., value)
-    {
-        if (!missing(j) || length(list(...)) > 0L)
-            stop("invalid subsetting")
-        if (missing(i))
-            i <- seq_len(length(x))
-        else
-            i <- normalizeSingleBracketSubscript(i, x)
-        ans_start <- start(x)
-        ans_start[i] <- start(value)
-        ans_width <- width(x)
-        ans_width[i] <- width(value)
-        initialize(x, start=ans_start, width=ans_width, NAMES=names(x))
-    }
-)
-
-setMethod("subsetByRanges", "IRanges",
-    function(x, start=NULL, end=NULL, width=NULL)
-    {
-        if (!is(start, "Ranges")) {
-            start <- IRanges(start=start, end=end, width=width)
-        } else if (!is.null(end) || !is.null(width)) {
-            stop("'end' and 'width' must be NULLs ",
-                 "when 'start' is a Ranges object")
-        }
-        ans_start <- subsetByRanges(start(x), start)
-        ans_width <- subsetByRanges(width(x), start)
-        ans_names <- subsetByRanges(names(x), start)
-        ans_mcols <- subsetByRanges(mcols(x), start)
-        initialize(x, start=ans_start, width=ans_width, NAMES=names(x),
+        if (is(x, "NormalIRanges")
+         && ((is.integer(i) && isNotStrictlySorted(i))
+          || (is(i, "Ranges") && !isNormal(i))))
+            stop("subscript cannot contain duplicates and must preserve the ",
+                 "order of elements when subsetting a ", class(x), " object")
+        ans_start <- extractROWS(start(x), i)
+        ans_width <- extractROWS(width(x), i)
+        ans_names <- extractROWS(names(x), i)
+        ans_mcols <- extractROWS(mcols(x), i)
+        initialize(x, start=ans_start, width=ans_width, NAMES=ans_names,
                       elementMetadata=ans_mcols)
     }
 )
 
-### TODO: Deprecate seqselect() at some point in favor of subsetByRanges().
-setMethod("seqselect", "IRanges",
-    function(x, start=NULL, end=NULL, width=NULL)
+setMethod("replaceROWS", "IRanges",
+    function(x, i, value)
     {
-        if (!is.null(end) || !is.null(width))
-            start <- IRanges(start = start, end = end, width = width)
-        irInfo <- .bracket.Index(start, length(x), names(x), asRanges = TRUE)
-        if (!is.null(irInfo[["msg"]]))
-            stop(irInfo[["msg"]])
-        if (irInfo[["useIdx"]]) {
-            ir <- irInfo[["idx"]]
-            x <-
-              initialize(x,
-                         start = seqselect(start(x), ir),
-                         width = seqselect(width(x), ir),
-                         NAMES = seqselect(names(x), ir),
-                         elementMetadata = seqselect(elementMetadata(x), ir))
-        }
-        x
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x)
+        ans_start <- replaceROWS(start(x), i, start(value))
+        ans_width <- replaceROWS(width(x), i, width(value))
+        ans <- initialize(x, start=ans_start, width=ans_width)
+        if (is(x, "NormalIRanges"))
+            validObject(ans)
+        ans
     }
 )
-
-setReplaceMethod("seqselect", "IRanges",
-    function(x, start = NULL, end = NULL, width = NULL, value)
-    {
-        if (is.null(end) && is.null(width)) {
-            if (is.null(start))
-                ir <- IRanges(start = 1, width = length(x))
-            else if (is(start, "Ranges"))
-                ir <- start
-            else {
-                if (is.logical(start) && length(start) != length(x))
-                    start <- rep(start, length.out = length(x))
-                ir <- as(start, "IRanges")
-            }
-        } else {
-            ir <- IRanges(start=start, end=end, width=width, names=NULL)
-        }
-        ir <- reduce(ir)
-        if (length(ir) == 0)
-            return(x)
-        if (anyMissingOrOutside(start(ir), 1L, length(x)) ||
-            anyMissingOrOutside(end(ir), 1L, length(x)))
-            stop("some ranges are out of bounds")
-        ans_start <- start(x)
-        seqselect(ans_start, ir) <- start(value)
-        ans_width <- width(x)
-        seqselect(ans_width, ir) <- width(value)
-        initialize(x, start=ans_start, width=ans_width, NAMES=names(x))
-    }
-)
-
-### S3/S4 combo for window.IRanges
-window.IRanges <- function(x, start=NA, end=NA, width=NA,
-                              frequency=NULL, delta=NULL, ...)
-{
-    slot(x, "start", check=FALSE) <-
-        window(start(x), start=start, end=end, width=width,
-                         frequency=frequency, delta=delta)
-    slot(x, "width", check=FALSE) <-
-        window(width(x), start=start, end=end, width=width,
-                         frequency=frequency, delta=delta)
-    if (!is.null(elementMetadata(x)))
-        slot(x, "elementMetadata", check=FALSE) <-
-            window(elementMetadata(x), start=start, end=end, width=width,
-                                       frequency=frequency, delta=delta)
-    if (!is.null(names(x)))
-        slot(x, "NAMES", check=FALSE) <-
-            window(names(x), start=start, end=end, width=width,
-                             frequency=frequency, delta=delta)
-    x
-}
-setMethod("window", "IRanges", window.IRanges)
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -130,10 +130,11 @@ setMethod("show", "GappedRanges",
 ###
 
 ### WARNING: We override the *semantic* of the "[[" method for Ranges objects.
-setMethod("[[", "GappedRanges",
-    function(x, i, j, ..., exact=TRUE)
+setMethod("getListElement", "GappedRanges",
+    function(x, i, exact=TRUE)
     {
-        i <- checkAndTranslateDbleBracketSubscript(x, i)
+        i <- normalizeDoubleBracketSubscript(i, x, exact=exact,
+                                             error.if.nomatch=TRUE)
         newNormalIRangesFromIRanges(x@cnirl[[i]], check=FALSE)
     }
 )
@@ -144,31 +145,16 @@ setMethod("elementLengths", "GappedRanges",
     function(x) elementLengths(x@cnirl)
 )
 
-setMethod("[", "GappedRanges",
-    function(x, i, j, ... , drop=TRUE)
+setMethod("extractROWS", "GappedRanges",
+    function(x, i)
     {
-        x@cnirl <- x@cnirl[i]
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x)
+        x@cnirl <- extractROWS(x@cnirl, i)
+        x@elementMetadata <- extractROWS(x@elementMetadata, i)
         x
     }
 )
-
-setMethod("seqselect", "GappedRanges",
-    function(x, start=NULL, end=NULL, width=NULL)
-    {
-        x@cnirl <- seqselect(x@cnirl, start=start, end=end, width=width)
-        x
-    }
-)
-
-### S3/S4 combo for window.GappedRanges
-window.GappedRanges <- function(x, start=NA, end=NA, width=NA,
-                                   frequency=NULL, delta=NULL, ...)
-{
-    x@cnirl <- window(x@cnirl, start=start, end=end, width=width,
-                               frequency=frequency, delta=delta, ...)
-    x
-}
-setMethod("window", "GappedRanges", window.GappedRanges)
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -84,200 +84,24 @@ setValidity2("CompressedList", .valid.CompressedList)
 ### Subsetting.
 ###
 
-### Supported 'i' types: numeric, character, logical, NULL and missing.
-setMethod("[", "CompressedList",
-          function(x, i, j, ..., drop)
-          {
-              if (!missing(j) || length(list(...)) > 0)
-                  stop("invalid subsetting")
-              if (!missing(i)) {
-                  if (is(i, "RangesList") || is(i, "RleList") ||
-                      is(i, "LogicalList") ||
-                      (is(i, "IntegerList") && !is(i, "Ranges"))) {
-                      x <- seqselect(x, i)
-                  } else {
-                      irInfo <-
-                        .bracket.Index(i, length(x), names(x), asRanges = TRUE)
-                      if (!is.null(irInfo[["msg"]]))
-                          stop(irInfo[["msg"]])
-                      if (irInfo[["useIdx"]]) {
-                          i <- irInfo[["idx"]]
-                          ir <-
-                            IRanges(end =
-                                    seqselect(end(x@partitioning), i),
-                                    width =
-                                    seqselect(width(x@partitioning), i))
-                          x <-
-                            initialize(x,
-                                       elementMetadata =
-                                       seqselect(x@elementMetadata, i),
-                                       unlistData = seqselect(x@unlistData, ir),
-                                       partitioning =
-                                       new2("PartitioningByEnd",
-                                            end = cumsum(width(ir)),
-                                            NAMES = seqselect(names(x), i),
-                                            check=FALSE))
-                      }
-                  }
-              }
-              x
-          })
-
-### The code is generic and does nothing specific to CompressedList.
-### Could be made the method for Vector objects.
-setReplaceMethod("[", "CompressedList",
-    function(x, i, j, ..., value)
+setMethod("extractROWS", "CompressedList",
+    function(x, i)
     {
-        if (!missing(j) || length(list(...)) > 0L)
-            stop("invalid subsetting")
-        if (missing(i))
-            i <- seq_len(length(x))
-        else if (is.list(i) || is(i, "List"))
-            return(subsetListByList_replace(x, i, value))
-        else
+        if (missing(i) || !is(i, "Ranges"))
             i <- normalizeSingleBracketSubscript(i, x)
-        li <- length(i)
-        if (li == 0L) {
-            ## Surprisingly, in that case, `[<-` on standard vectors does not
-            ## even look at 'value'. So neither do we...
-            return(x)
-        }
-        lv <- length(value)
-        if (lv == 0L)
-            stop("replacement has length zero")
-        if (!is(value, class(x)))
-            value <- mk_singleBracketReplacementValue(x, value)
-        if (li != lv) {
-            if (li %% lv != 0L)
-                warning("number of items to replace is not a multiple ",
-                        "of replacement length")
-            ## Assuming that rep() works on 'value' and also replicates its
-            ## names.
-            value <- rep(value, length.out = li)
-        }
-        ## Assuming that c() works on objects of class 'class(x)'.
-        ans <- c(x, value)
-        idx <- seq_len(length(x))
-        idx[i] <- length(x) + seq_len(length(value))
-        ## Assuming that [ works on objects of class 'class(x)'.
-        ans <- ans[idx]
-        ## Restore the original decoration.
-        metadata(ans) <- metadata(x)
-        names(ans) <- names(x)
-        mcols(ans) <- mcols(x)
-        ans
+        ir <- IRanges(end=extractROWS(end(x@partitioning), i),
+                      width=extractROWS(width(x@partitioning), i))
+        ans_unlistData <- extractROWS(x@unlistData, ir)
+        ans_partitioning <- new2("PartitioningByEnd",
+                                 end=cumsum(width(ir)),
+                                 NAMES=extractROWS(names(x), i),
+                                 check=FALSE)
+        ans_elementMetadata <- extractROWS(x@elementMetadata, i)
+        initialize(x, unlistData=ans_unlistData,
+                      partitioning=ans_partitioning,
+                      elementMetadata=ans_elementMetadata)
     }
 )
-
-setMethod("seqselect", "CompressedList",
-          function(x, start=NULL, end=NULL, width=NULL)
-          {
-              lx <- length(x)
-              if ((lx > 0) && is.null(end) && is.null(width) &&
-                  !is.null(start) && !is(start, "Ranges")) {
-                  if (lx != length(start))
-                      stop("'length(start)' must equal 'length(x)' when ",
-                           "'end' and 'width' are NULL")
-                  if (is.list(start)) {
-                      if (is.logical(start[[1L]]))
-                          start <- LogicalList(start)
-                      else if (is.numeric(start[[1L]]))
-                          start <- IntegerList(start)
-                  } else if (is(start, "RleList")) {
-                      start <- IRangesList(start)
-                  }
-                  if (is(start, "RangesList")) {
-                      unlistData <-
-                        seqselect(x@unlistData,
-                                  shift(unlist(start, use.names = FALSE),
-                                        rep.int(start(x@partitioning) - 1L,
-                                                elementLengths(start))))
-                      partitionEnd <- cumsum(unlist(sum(width(start)),
-                                                    use.names = FALSE))
-                  } else if (is(start, "LogicalList")) {
-                      xeltlen <- elementLengths(x)
-                      whichRep <- which(xeltlen != elementLengths(start))
-                      for (i in whichRep)
-                          start[[i]] <- rep(start[[i]], length.out = xeltlen[i])
-                      unlistData <- seqselect(x@unlistData, unlist(start))
-                      partitionEnd <-
-                        cumsum(unlist(lapply(start, sum), use.names = FALSE))
-                  } else if (is(start, "IntegerList")) {
-                      i <-
-                        unlist(start +
-                               relist(start(x@partitioning) - 1L,
-                                      PartitioningByEnd(seq_len(lx))))
-                      unlistData <- seqselect(x@unlistData, i)
-                      partitionEnd <- cumsum(unname(elementLengths(start)))
-                  } else {
-                      stop("unrecognized 'start' type")
-                  }
-                  x <-
-                    initialize(x,
-                               unlistData = unlistData,
-                               partitioning = 
-                                 new2("PartitioningByEnd",
-                                      end = unname(partitionEnd), NAMES = names(x),
-                                      check=FALSE))
-              } else {
-                  if (!is.null(end) || !is.null(width))
-                      start <- IRanges(start = start, end = end, width = width)
-                  irInfo <- .bracket.Index(start, lx, names(x), asRanges = TRUE)
-                  if (!is.null(irInfo[["msg"]]))
-                      stop(irInfo[["msg"]])
-                  if (irInfo[["useIdx"]])
-                      x <- x[irInfo[["idx"]]]
-              }
-              x
-          })
-
-setReplaceMethod("seqselect", "CompressedList",
-                 function(x, start = NULL, end = NULL, width = NULL, value)
-                 {
-                     lx <- length(x)
-                     if ((lx > 0) && is.null(end) && is.null(width) &&
-                         !is.null(start) && !is(start, "Ranges")) {
-                         if (lx != length(start))
-                             stop("'length(start)' must equal 'length(x)' ",
-                                  "when 'end' and 'width' are NULL")
-                         if (is.list(start)) {
-                             if (is.logical(start[[1L]]))
-                                 start <- LogicalList(start)
-                             else if (is.numeric(start[[1L]]))
-                                 start <- IntegerList(start)
-                         } else if (is(start, "RleList")) {
-                             start <- IRangesList(start)
-                         }
-                         if (is(start, "RangesList")) {
-                             start <-
-                               shift(unlist(start),
-                                     rep.int(start(x@partitioning) - 1L,
-                                             elementLengths(start)))
-                         } else if (is(start, "LogicalList")) {
-                             xeltlen <- elementLengths(x)
-                             whichRep <- which(xeltlen != elementLengths(start))
-                             for (i in whichRep) {
-                                 start[[i]] <-
-                                   rep(start[[i]], length.out = xeltlen[i])
-                             }
-                             start <- unlist(start)
-                         } else if (is(start, "IntegerList")) {
-                             i <-
-                               unlist(start +
-                                      relist(start(x@partitioning) - 1L,
-                                             PartitioningByEnd(seq_len(length(x)))))
-                             start <- rep.int(FALSE, sum(elementLengths(x)))
-                             start[i] <- TRUE
-                         } else {
-                             stop("unrecognized 'start' type")
-                         }
-                         seqselect(x@unlistData, start) <-
-                           unlist(value, use.names=FALSE)
-                     } else {
-                         x <- callNextMethod()
-                     }
-                     x
-                 })
 
 .CompressedList.list.subscript <-
 function(X, INDEX, USE.NAMES = TRUE, COMPRESS = missing(FUN), FUN = identity,
@@ -299,9 +123,9 @@ function(X, INDEX, USE.NAMES = TRUE, COMPRESS = missing(FUN), FUN = identity,
     } else if(COMPRESS && missing(FUN) && useFastSubset) {
         nzINDEX <- INDEX[whichNonZeroLength]
         elts <-
-          seqselect(X@unlistData,
-                    start = start(X@partitioning)[nzINDEX],
-                    width = width(X@partitioning)[nzINDEX])
+          extractROWS(X@unlistData,
+                      IRanges(start=start(X@partitioning),
+                              width=width(X@partitioning))[nzINDEX])
     } else {
         elts <- rep(list(zeroLengthElt), k)
         if (kOK > 0) {
@@ -314,8 +138,9 @@ function(X, INDEX, USE.NAMES = TRUE, COMPRESS = missing(FUN), FUN = identity,
             if (useFastSubset) {
                 elts[whichNonZeroLength] <-
                   lapply(seq_len(kOK), function(j)
-                         FUN(window(X@unlistData, start = eltStarts[j],
-                                    end = eltEnds[j]), ...))
+                         FUN(extractROWS(X@unlistData,
+                                         IRanges(eltStarts[j], eltEnds[j])),
+                             ...))
             } else {
                 elts[whichNonZeroLength] <-
                   lapply(seq_len(kOK), function(j)
@@ -339,24 +164,16 @@ function(X, INDEX, USE.NAMES = TRUE, COMPRESS = missing(FUN), FUN = identity,
     elts
 }
 
-setMethod("[[", "CompressedList",
-          function(x, i, j, ...) {
-              dotArgs <- list(...)
-              if (length(dotArgs) > 0)
-                  dotArgs <- dotArgs[names(dotArgs) != "exact"]
-              if (!missing(j) || length(dotArgs) > 0)
-                  stop("incorrect number of subscripts")
-              ## H.P.: Do we really need to support subsetting by NA? Other
-              ## "[[" methods for other Vector subtypes don't support it.
-              if (is.vector(i) && length(i) == 1L && is.na(i))
-                  return(NULL)
-              index <- checkAndTranslateDbleBracketSubscript(x, i,
-                           error.if.nomatch=FALSE)
-              if (is.na(index))
-                  return(NULL)
-              .CompressedList.list.subscript(X = x, INDEX = index,
-                                             USE.NAMES = FALSE)
-          })
+setMethod("getListElement", "CompressedList",
+    function(x, i, exact=TRUE)
+    {
+        i <- normalizeDoubleBracketSubscript(i, x, exact=exact,
+                                             error.if.nomatch=FALSE)
+        if (is.na(i))
+            return(NULL)
+        .CompressedList.list.subscript(X=x, INDEX=i, USE.NAMES=FALSE)
+    }
+)
 
 setReplaceMethod("[[", "CompressedList",
                  function(x, i, j,..., value)
@@ -408,10 +225,18 @@ setReplaceMethod("$", "CompressedList",
 ### Combining and splitting.
 ###
 
+.bindROWS <- function(...)
+{
+    args <- list(...)
+    if (length(dim(args[[1L]])) < 2L)
+        return(c(...))
+    rbind(...)
+}
+
 ### Not exported. 'x' *must* be an unnamed list of length >= 1 (not checked).
 unlist_list_of_CompressedList <- function(x)
 {
-    ans_unlistData <- do.call(bindROWS, lapply(x, slot, "unlistData"))
+    ans_unlistData <- do.call(.bindROWS, lapply(x, slot, "unlistData"))
     ans_eltlens <- unlist(lapply(x, elementLengths))
     ans <- relist(ans_unlistData, PartitioningByEnd(cumsum(ans_eltlens)))
     ans_mcols <- do.call(rbind.mcols, x)
@@ -519,10 +344,7 @@ setMethod("mendoapply", "CompressedList",
 setMethod("revElements", "CompressedList",
     function(x, i)
     {
-        if (missing(i))
-            i <- seq_len(length(x))
-        else
-            i <- normalizeSingleBracketSubscript(i, x)
+        i <- normalizeSingleBracketSubscript(i, x)
         if (length(x) == 0L)
             return(x)
         elt_lens <- elementLengths(x)

@@ -131,9 +131,6 @@
 \alias{RleList,AtomicList,RleList-method}
 \alias{coerce,CompressedRleList,CompressedIRangesList-method}
 
-\alias{seqselect<-,CompressedAtomicList-method}
-\alias{seqselect<-,SimpleAtomicList-method}
-
 \alias{Ops,CompressedAtomicList,CompressedAtomicList-method}
 \alias{Ops,SimpleAtomicList,SimpleAtomicList-method}
 \alias{Ops,SimpleAtomicList,CompressedAtomicList-method}
@@ -142,6 +139,8 @@
 \alias{Ops,atomic,AtomicList-method}
 \alias{Ops,CompressedAtomicList,atomic-method}
 \alias{Ops,atomic,CompressedAtomicList-method}
+\alias{Ops,SimpleAtomicList,atomic-method}
+\alias{Ops,atomic,SimpleAtomicList-method}
 \alias{Math,CompressedAtomicList-method}
 \alias{Math,SimpleAtomicList-method}
 \alias{Math2,CompressedAtomicList-method}
@@ -159,8 +158,15 @@
 \alias{is.na,CompressedRleList-method}
 \alias{is.na,SimpleRleList-method}
 \alias{duplicated,AtomicList-method}
+\alias{duplicated.AtomicList}
+\alias{duplicated,CompressedAtomicList-method}
+\alias{duplicated.CompressedAtomicList}
+\alias{unique.CompressedAtomicList}
+\alias{unique,CompressedAtomicList-method}
 \alias{unique,CompressedRleList-method}
+\alias{unique.CompressedRleList}
 \alias{unique,SimpleRleList-method}
+\alias{unique.SimpleRleList}
 \alias{match,CompressedAtomicList,atomic-method}
 \alias{match,SimpleAtomicList,atomic-method}
 \alias{match,CompressedRleList,atomic-method}
@@ -180,6 +186,7 @@
 \alias{table,SimpleAtomicList-method}
 \alias{table,CompressedAtomicList-method}
 \alias{sort,RleList-method}
+\alias{sort.RleList}
 \alias{drop,AtomicList-method}
 
 \alias{!,CompressedLogicalList-method}
@@ -311,7 +318,7 @@
     \item{}{\code{RawList(..., compress = TRUE)}: Concatenates the
       \code{raw} vectors in \code{...} into a new \code{RawList}.
       If \code{compress}, the internal storage of the data is compressed.}
-    \item{}{\code{RleList(..., compress = FALSE)}: Concatenates the
+    \item{}{\code{RleList(..., compress = TRUE)}: Concatenates the
       run-length encoded atomic vectors in \code{...} into a new
       \code{RleList}.
       If \code{compress}, the internal storage of the data is compressed.}

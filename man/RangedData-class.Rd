@@ -55,7 +55,7 @@
 % Combining and splitting
 \alias{c,RangedData-method}
 \alias{rbind,RangedData-method}
-\alias{split,RangedData-method}
+\alias{split,RangedData,ANY-method}
 
 % Subsetting:
 \alias{[,RangedData-method}
@@ -63,9 +63,8 @@
 \alias{[[,RangedData-method}
 \alias{[[<-,RangedData-method}
 \alias{$<-,RangedData-method}
-\alias{seqselect,RangedData-method}
-\alias{seqselect<-,RangedData-method}
 \alias{window<-,RangedData-method}
+\alias{window<-.RangedData}
 
 % Utilities:
 \alias{within,RangedData-method}

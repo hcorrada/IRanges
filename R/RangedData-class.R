@@ -481,8 +481,8 @@ setMethod("[", "RangedData",
                 }
                 isplit <- split(i, igroup)
                 names(isplit) <- names(x)
-                ranges <- seqselect(ranges, isplit)
-                values <- seqselect(values, isplit)
+                ranges <- subsetListByList(ranges, isplit)
+                values <- subsetListByList(values, isplit)
                 if (drop) {
                   ok <- (elementLengths(ranges) > 0)
                   ranges <- ranges[ok]
@@ -505,20 +505,6 @@ setMethod("[", "RangedData",
 
 setReplaceMethod("[", "RangedData",
                  function(x, i, j,..., value)
-                 stop("operation not supported")
-                 )
-
-setMethod("seqselect", "RangedData",
-          function(x, start=NULL, end=NULL, width=NULL)
-          initialize(x,
-                     ranges =
-                     seqselect(ranges(x), start=start, end=end, width=width),
-                     values =
-                     seqselect(values(x), start=start, end=end, width=width))
-          )
-
-setReplaceMethod("seqselect", "RangedData",
-                 function(x, start = NULL, end = NULL, width = NULL, value)
                  stop("operation not supported")
                  )
 
@@ -649,7 +635,7 @@ setAs("RleViewsList", "RangedData", function(from) {
   from_ranges <- restrict(ranges(from), 1L, elementLengths(subject),
                           keep.all.ranges = TRUE)
 ### FIXME: do we want to insert NAs for out of bounds views?
-  score <- seqselect(subject, from_ranges)
+  score <- extractROWS(subject, from_ranges)
   score_part <- seqapply(width(from_ranges), PartitioningByWidth)
   score_ranges <- ranges(score)
   ol <- findOverlaps(score_ranges, score_part)

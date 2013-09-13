@@ -10,6 +10,7 @@
 \alias{selfmatch,Ranges-method}
 
 \alias{duplicated,Ranges-method}
+\alias{duplicated.Ranges}
 
 \alias{\%in\%,Ranges,Ranges-method}
 
@@ -43,7 +44,8 @@ rangeComparisonCodeToLetter(code)
 ## selfmatch()
 ## -----------
 
-\S4method{selfmatch}{Ranges}(x, method=c("auto", "quick", "hash"))
+\S4method{selfmatch}{Ranges}(x,
+          method=c("auto", "quick", "hash"), match.if.overlap=FALSE)
 
 ## order() and related methods
 ## ----------------------------
@@ -76,11 +78,12 @@ rangeComparisonCodeToLetter(code)
     otherwise the Quicksort-based algorithm.
   }
   \item{match.if.overlap}{
-    This argument is deprecated in BioC 2.13 and won't be supported
-    anymore in BioC 2.14. Please use
+    For \code{match}: This argument is deprecated in BioC 2.13 and won't be
+    supported anymore in BioC 2.14. Please use
     \code{findOverlaps(x, table, select="first")}
     instead of
     \code{match(x, table, match.if.overlap=TRUE)}.
+    For \code{selfmatch}: This argument is ignored and will be removed soon.
   }
   \item{...}{
     One or more \link{Ranges} objects. The additional \link{Ranges} objects

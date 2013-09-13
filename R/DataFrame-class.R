@@ -160,15 +160,16 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
       nrows[i] <- nrow(element)
       ncols[i] <- ncol(element)
       varlist[[i]] <- as.list(element, use.names = FALSE)
-      if (((length(dim(listData[[i]])) > 1) || (ncol(element) > 1)) &&
-          !is(listData[[i]], "AsIs"))
-      {
-        if (emptynames[i])
-          varnames[[i]] <- colnames(element)
-        else
-          varnames[[i]] <- paste(varnames[[i]], colnames(element), sep = ".")
-      } else if (is.list(listData[[i]]) && length(names(listData[[i]])))
-          varnames[[i]] <- names(element)
+      if (!is(listData[[i]], "AsIs")) {
+        if (((length(dim(listData[[i]])) > 1) || (ncol(element) > 1)))
+          {
+            if (emptynames[i])
+              varnames[[i]] <- colnames(element)
+            else
+              varnames[[i]] <- paste(varnames[[i]], colnames(element), sep = ".")
+          } else if (is.list(listData[[i]]) && length(names(listData[[i]])))
+            varnames[[i]] <- names(element)
+      }
       if (is.null(row.names))
         row.names <- rownames(element)
     }
@@ -205,30 +206,6 @@ DataFrame <- function(..., row.names = NULL, check.names = TRUE)
 ### Subsetting.
 ###
 
-setMethod("[[", "DataFrame",
-          function(x, i, j, ...)
-          {
-            dotArgs <- list(...)
-            if (length(dotArgs) > 0)
-              dotArgs <- dotArgs[names(dotArgs) != "exact"]
-            if (!missing(j) || length(dotArgs) > 0)
-              stop("invalid subsetting")
-            if (missing(i))
-              stop("subscript is missing")
-            if (!is.character(i) && !is.numeric(i))
-              stop("invalid subscript type")
-            if (length(i) < 1L)
-              stop("attempt to select less than one element")
-            if (length(i) > 1L)
-              stop("attempt to select more than one element")
-            if (!is.character(i) && !is.na(i) && (i < 1L || i > length(x)))
-              stop("subscript out of bounds")
-            els <- as.list(x, use.names = FALSE)
-            names(els) <- names(x)
-            els[[i, ...]]
-          }
-          )
-
 setReplaceMethod("[[", "DataFrame",
                  function(x, i, j,..., value)
                  {
@@ -259,120 +236,136 @@ setReplaceMethod("[[", "DataFrame",
                    x
                  })
 
+setMethod("extractROWS", "DataFrame",
+    function(x, i)
+    {
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x, byrow=TRUE, exact=FALSE)
+        slot(x, "listData", check=FALSE) <-
+            lapply(structure(seq_len(ncol(x)), names=names(x)),
+                   function(j) extractROWS(x[[j]], i))
+        if (is(i, "Ranges"))
+            li <- sum(width(i))
+        else
+            li <- length(i)
+        slot(x, "nrows", check=FALSE) <- li
+        if (!is.null(rownames(x))) {
+            slot(x, "rownames", check=FALSE) <-
+                make.unique(extractROWS(rownames(x), i))
+        }
+        x
+    }
+)
+
 setMethod("[", "DataFrame",
-          function(x, i, j, ..., drop)
-          {
-            if (length(list(...)) > 0)
-              warning("parameters in '...' not supported")
+    function(x, i, j, ..., drop=TRUE)
+    {
+        if (!isTRUEorFALSE(drop))
+            stop("'drop' must be TRUE or FALSE")
+        if (length(list(...)) > 0L)
+            warning("parameters in '...' not supported")
 
-            ## no ',' -- forward to list
-            ## NOTE: matrix-style subsetting by logical matrix not supported
-            if ((nargs() - !missing(drop)) < 3) {
-              if (!missing(drop))
-                warning("parameter 'drop' ignored by list-style subsetting")
-              if (missing(i))
-                return(x)
-              iInfo <- .bracket.Index(i, ncol(x), colnames(x))
-              if (!is.null(iInfo[["msg"]]))
-                stop("subsetting as list: ", iInfo[["msg"]])
-              x <- callNextMethod(x, iInfo[["idx"]])
-              if (anyDuplicated(names(x)))
+        ## We do list-style subsetting when [ was called with no ','.
+        ## NOTE: matrix-style subsetting by logical matrix not supported.
+        list_style_subsetting <- (nargs() - !missing(drop)) < 3L
+        if (list_style_subsetting || !missing(j)) {
+            if (list_style_subsetting) {
+                if (!missing(drop))
+                    warning("'drop' argument ignored by list-style subsetting")
+                if (missing(i))
+                    return(x)
+                j <- i
+            }
+            if (!is(j, "Ranges"))
+                j <- normalizeSingleBracketSubscript(j, x)
+            new_listData <- extractROWS(x@listData, j)
+            new_mcols <- extractROWS(mcols(x), j)
+            x <- initialize(x, listData=new_listData,
+                               elementMetadata=new_mcols)
+            if (anyDuplicated(names(x)))
                 names(x) <- make.names(names(x))
-              return(x)
-            }
-
-            dim <- dim(x)
-            if (!missing(j)) {
-              jInfo <- .bracket.Index(j, ncol(x), colnames(x))
-              if (!is.null(jInfo[["msg"]]))
-                stop("selecting cols: ", jInfo[["msg"]])
-              x <- callNextMethod(x, jInfo[["idx"]])
-              if (anyDuplicated(names(x)))
-                names(x) <- make.unique(names(x))
-              dim[2L] <- length(x)
-            }
-
-            if (!missing(i)) {
-              iInfo <- .bracket.Index(i, nrow(x), rownames(x), dup.nms = TRUE)
-              if (!is.null(iInfo[["msg"]]))
-                stop("selecting rows: ", iInfo[["msg"]])
-              useI <- iInfo[["useIdx"]]
-              i <- iInfo[["idx"]]
-              if (useI) {
-                x@listData <- lapply(as.list(x), function(y) {
-                  if (length(dim(y)) > 1)
-                    y[i, , drop = FALSE]
-                  else y[i]
-                })
-                dim[1L] <- length(seq(dim[1L])[i]) #may have 0 cols, no rownames
-                x@nrows <- dim[1L]
-                rn <- rownames(x)[i]
-                if (anyDuplicated(rn))
-                  x@rownames <- make.unique(rn)
-                else
-                  x@rownames <- rn
-              }
-            }
-
-            if (missing(drop)) ## drop by default if only one column left
-              drop <- dim[2L] == 1
-            if (drop) {
-              ## one column left
-              if (dim[2L] == 1)
+            if (list_style_subsetting)
+                return(x)
+        }
+        if (!missing(i))
+            x <- extractROWS(x, i)
+        if (missing(drop))  # drop by default if only one column left
+            drop <- ncol(x) == 1L
+        if (drop) {
+            ## one column left
+            if (ncol(x) == 1L)
                 return(x[[1L]])
-              ## one row left
-              if (dim[1L] == 1)
+            ## one row left
+            if (nrow(x) == 1L)
                 return(as(x, "list"))
-            }
+        }
+        x
+    }
+)
 
-            x
-          })
+setMethod("replaceROWS", "DataFrame",
+    function(x, i, value)
+    {
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x, byrow=TRUE)
+        x_ncol <- ncol(x)
+        value_ncol <- ncol(value)
+        if (value_ncol > x_ncol)
+            stop("provided ", value_ncol, " variables ",
+                 "to replace ", x_ncol, " variables")
+        slot(x, "listData", check=FALSE) <-
+            lapply(structure(seq_len(ncol(x)), names=names(x)),
+                   function(j)
+                       replaceROWS(x[[j]], i,
+                                   value[[((j - 1L) %% value_ncol) + 1L]]))
+        x
+    }
+)
 
 setReplaceMethod("[", "DataFrame",
                  function(x, i, j, ..., value)
                  {
                    if (length(list(...)) > 0)
                      warning("parameters in '...' not supported")
+                   useI <- FALSE
+                   newrn <- newcn <- NULL
                    if (nargs() < 4) {
-                     iInfo <- list(msg = NULL, useIdx = FALSE, idx = NULL)
+                     i2 <- seq_len(nrow(x))
                      if (missing(i)) {
-                       jInfo <-
-                         list(msg = NULL, useIdx = FALSE, idx = seq_len(ncol(x)))
+                       j2 <- seq_len(ncol(x))
                      } else {
                        if (length(i) == 1) {
                          if (is.logical(i) == 1 && i)
                              i <- rep(i, ncol(x))
                        }
-                       jInfo <- .bracket.Index(i, ncol(x), colnames(x),
-                                               allowAppend = TRUE)
+                       j2 <- normalizeSingleBracketSubscript(i, x,
+                                                             allow.append=TRUE)
+                       if (is.character(i))
+                           newcn <- i[j2 > ncol(x)]
                      }
                    } else {
                      if (missing(i)) {
-                       iInfo <- list(msg = NULL, useIdx = FALSE, idx = NULL)
+                       i2 <- seq_len(nrow(x))
                      } else {
-                       iInfo <-
-                         .bracket.Index(i, nrow(x), rownames(x),
-                                        allowAppend = TRUE)
+                       useI <- TRUE
+                       i2 <- normalizeSingleBracketSubscript(i, x, byrow=TRUE,
+                                                             allow.append=TRUE)
+                       if (is.character(i))
+                           newrn <- i[i2 > nrow(x)]
                      }
                      if (missing(j)) {
-                       jInfo <-
-                         list(msg = NULL, useIdx = FALSE, idx = seq_len(ncol(x)))
+                       j2 <- seq_len(ncol(x))
                      } else {
-                       jInfo <- .bracket.Index(j, ncol(x), colnames(x),
-                                               allowAppend = TRUE)
+                       j2 <- normalizeSingleBracketSubscript(j, x,
+                                                             allow.append=TRUE)
+                       if (is.character(j))
+                           newcn <- j[j2 > ncol(x)]
                      }
                    }
-                   if (!is.null(iInfo[["msg"]]))
-                     stop("replacing rows: ", iInfo[["msg"]])
-                   if (!is.null(jInfo[["msg"]]))
-                     stop("replacing cols: ", jInfo[["msg"]])
-                   i <- iInfo[["idx"]]
-                   j <- jInfo[["idx"]]
-                   newcn <- jInfo[["newNames"]]
-                   newrn <- iInfo[["newNames"]]
+                   i <- i2
+                   j <- j2
                    if (!length(j)) # nothing to replace
                      return(x)
-                   useI <- iInfo[["useIdx"]]
                    if (is(value, "list") || is(value, "List"))
                      value <- as(value, "DataFrame")
                    if (!is(value, "DataFrame")) {
@@ -382,7 +375,7 @@ setReplaceMethod("[", "DataFrame",
                        li <- nrow(x)
                      lv <- length(value)
                      if (li != lv) {
-                       if ((li == 0) || (li %% lv != 0))
+                       if (li %% lv != 0)
                          stop(paste(lv, "rows in value to replace",
                                     li, " rows"))
                        else
@@ -393,7 +386,7 @@ setReplaceMethod("[", "DataFrame",
                        newcn <- paste("V", seq.int(length(x) + 1L, max(j)),
                                       sep = "")
                        if (length(newcn) != sum(j > length(x)))
-                         stop("new columns would leave holes after",
+                         stop("new columns would leave holes after ",
                               "existing columns")
                      }
                      if (useI) {
@@ -478,33 +471,6 @@ setReplaceMethod("[", "DataFrame",
                    x
                  })
 
-setMethod("seqselect", "DataFrame",
-          function(x, start=NULL, end=NULL, width=NULL)
-          {
-              if (!is.null(end) || !is.null(width))
-                  start <- IRanges(start = start, end = end, width = width)
-              irInfo <-
-                .bracket.Index(start, nrow(x), rownames(x), asRanges = TRUE)
-              if (!is.null(irInfo[["msg"]]))
-                  stop(irInfo[["msg"]])
-              if (irInfo[["useIdx"]]) {
-                  ir <- irInfo[["idx"]]
-                  if (length(ir) == 0) {
-                      x <- x[integer(0),,drop=FALSE]
-                  } else {
-                      slot(x, "listData", check=FALSE) <-
-                        lapply(structure(seq_len(ncol(x)),
-                                         names = names(x)),
-                               function(i) seqselect(x[[i]], ir))
-                      slot(x, "nrows", check=FALSE) <- sum(width(ir))
-                      if (!is.null(rownames(x))) {
-                          slot(x, "rownames", check=FALSE) <-
-                            make.unique(seqselect(rownames(x), ir))
-                      }
-                  }
-              }
-              x
-          })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion.
@@ -618,10 +584,9 @@ setAs("integer", "DataFrame",
 
 setAs("AsIs", "DataFrame",
       function(from) {
-        if (length(class(from)) > 1)
-          class(from) <- tail(class(from), -1)
-        else from <- unclass(from)
         df <- new2("DataFrame", nrows = NROW(from), check=FALSE)
         df[[1]] <- from
         df
       })
+
+setAs("ANY", "AsIs", function(from) I(from))

@@ -80,15 +80,13 @@ setReplaceMethod("names", "Views",
     }
 )
 
-setMethod("[", "Views",
-    function(x, i, j, ..., drop)
+setMethod("extractROWS", "Views",
+    function(x, i)
     {
-        if (!missing(j) || length(list(...)) > 0L)
-            stop("invalid subsetting")
-        if (missing(i))
-            return(x)
-        x@ranges <- ranges(x)[i]
-        mcols(x) <- mcols(x)[i, , drop=FALSE]
+        if (missing(i) || !is(i, "Ranges"))
+            i <- normalizeSingleBracketSubscript(i, x)
+        x@ranges <- extractROWS(ranges(x), i)
+        mcols(x) <- extractROWS(mcols(x), i)
         x
     }
 )
@@ -191,7 +189,7 @@ setMethod("as.matrix", "Views", function(x, rev = FALSE, max.width = NA) {
   part <- PartitioningByWidth(x_ranges)
   ord <- mseq(ifelse(rev, end(part), start(part)),
               ifelse(rev, start(part), end(part)))
-  v <- seqselect(subject(x), x_ranges)[ord]
+  v <- extractROWS(subject(x), x_ranges)[ord]
   v_fill <- rep.int(NA, max.width * length(x))
   part <- PartitioningByWidth(rep(max.width, length(x)))
   i <- as.integer(IRanges(start(part), width = width(x_ranges)))
@@ -204,15 +202,57 @@ setMethod("as.matrix", "Views", function(x, rev = FALSE, max.width = NA) {
 ### Extracting a view.
 ###
 
-setMethod("[[", "Views",
-    function(x, i, j, ...)
+setMethod("getListElement", "Views",
+    function(x, i, exact=TRUE)
     {
-        i <- checkAndTranslateDbleBracketSubscript(x, i)
+        i <- normalizeDoubleBracketSubscript(i, x, exact=exact,
+                                             error.if.nomatch=TRUE)
         start <- start(x)[i]
         end <- end(x)[i]
         if (start < 1L || end > length(subject(x)))
             stop("view is out of limits")
         window(subject(x), start=start, end=end)
+    }
+)
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Combining Views objects.
+###
+
+setMethod("c", "Views",
+    function(x, ..., ignore.mcols=FALSE, recursive=FALSE)
+    {
+        if (!identical(recursive, FALSE))
+            stop("\"c\" method for Views objects ",
+                 "does not support the 'recursive' argument")
+        if (!isTRUEorFALSE(ignore.mcols))
+            stop("'ignore.mcols' must be TRUE or FALSE")
+        if (missing(x)) {
+            args <- unname(list(...))
+            x <- args[[1L]]
+        } else {
+            args <- unname(list(x, ...))
+        }
+        if (length(args) == 1L)
+            return(x)
+        arg_is_null <- sapply(args, is.null)
+        if (any(arg_is_null))
+            args[arg_is_null] <- NULL  # remove NULL elements by setting them to NULL!
+        if (!all(sapply(args, is, class(x))))
+            stop("all arguments in '...' must be ", class(x), " objects (or NULLs)")
+        ok <- sapply(args, function(arg)
+                     isTRUE(all.equal(subject(arg), subject(x))))
+        if (!all(ok))
+            stop("all Views objects to combine must have the same subject")
+        x@ranges <- do.call(c, lapply(args, ranges))
+        if (ignore.mcols) {
+            mcols(x) <- NULL
+        } else  {
+            mcols(x) <- do.call(rbind.mcols, args)
+        }
+        validObject(x)
+        x
     }
 )
 
