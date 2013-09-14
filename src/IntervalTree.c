@@ -501,7 +501,6 @@ SEXP _IntegerIntervalTree_overlap_first(SEXP r_query_start, SEXP r_order, struct
   int *left, *right, *r_vector, *r_elt, *o_elt;
 
   nhits = INTEGER(r_query_start)[nranges];
-  slReverse(&results);
 
   PROTECT(r_results = allocVector(INTSXP, nranges));
   for (i = 0, r_elt = INTEGER(r_results); i < nranges; i++, r_elt++)
@@ -536,7 +535,9 @@ SEXP IntegerIntervalTree_overlap_first(SEXP r_tree, SEXP r_ranges,
     _IntegerIntervalTree_overlap(tree, r_ranges, FIND_ALL, &results);
   PROTECT(r_query_start);
 
+  slReverse(&results);
   r_results = _IntegerIntervalTree_overlap_first(r_query_start, r_order, results, nranges);
+
   slFreeList(&results);
   popRHandlers();
   
@@ -555,6 +556,7 @@ SEXP IntegerIntervalForest_overlap_first(SEXP r_forest, SEXP r_ranges, SEXP r_pa
   r_query_start = _IntegerIntervalForest_overlap(forest, r_ranges, r_partitionIndices, r_partitionLengths, FIND_ALL, &results);
   PROTECT(r_query_start);
 
+  slReverse(&results);
   r_results = _IntegerIntervalTree_overlap_first(r_query_start, r_order, results, nranges);
   
   slFreeList(&results);
@@ -573,7 +575,6 @@ SEXP _IntegerIntervalTree_overlap_last(SEXP r_query_start, SEXP r_order, struct 
   int *left, *right, *r_vector, *r_elt, *o_elt;
 
   nhits = INTEGER(r_query_start)[nranges];
-  slReverse(&results);
 
   PROTECT(r_results = allocVector(INTSXP, nranges));
   for (i = 0, r_elt = INTEGER(r_results); i < nranges; i++, r_elt++)
@@ -608,7 +609,9 @@ SEXP IntegerIntervalTree_overlap_last(SEXP r_tree, SEXP r_ranges,
     _IntegerIntervalTree_overlap(tree, r_ranges, FIND_ALL, &results);
   PROTECT(r_query_start);
 
+  slReverse(&results);
   r_results = _IntegerIntervalTree_overlap_last(r_query_start, r_order, results, nranges);  
+
   slFreeList(&results);
   popRHandlers();
   
@@ -628,7 +631,9 @@ SEXP IntegerIntervalForest_overlap_last(SEXP r_forest, SEXP r_ranges, SEXP r_par
     _IntegerIntervalForest_overlap(forest, r_ranges, r_partitionIndices, r_partitionLengths, FIND_ALL, &results);
   PROTECT(r_query_start);
 
+  slReverse(&results);
   r_results = _IntegerIntervalTree_overlap_last(r_query_start, r_order, results, nranges);  
+
   slFreeList(&results);
   popRHandlers();
   
@@ -644,7 +649,6 @@ SEXP _IntegerIntervalTree_overlap_all(SEXP r_query_start, SEXP r_order, struct s
   int i, j, nhits; 
   int *left, *right, *r_elt, *o_elt;
   nhits = INTEGER(r_query_start)[nranges];
-  slReverse(&results);
 
   int *r_query_col = (int *) R_alloc((long) nhits, sizeof(int));
   r_elt = r_query_col;
@@ -696,8 +700,10 @@ SEXP IntegerIntervalTree_overlap_all(SEXP r_tree, SEXP r_ranges, SEXP r_order)
   r_query_start =
     _IntegerIntervalTree_overlap(tree, r_ranges, FIND_ALL, &results);
   PROTECT(r_query_start);
-  
+
+  slReverse(&results);  
   r_results = _IntegerIntervalTree_overlap_all(r_query_start, r_order, results, nranges, tree->n);
+
   slFreeList(&results);
   popRHandlers();
 
@@ -717,6 +723,7 @@ SEXP IntegerIntervalForest_overlap_all(SEXP r_forest, SEXP r_ranges, SEXP r_part
     _IntegerIntervalForest_overlap(forest, r_ranges, r_partitionIndices, r_partitionLengths, FIND_ALL, &results);
   PROTECT(r_query_start);
 
+  slReverse(&results);
   r_results = _IntegerIntervalTree_overlap_all(r_query_start, r_order, results, nranges, forest->n);
 
   slFreeList(&results);
