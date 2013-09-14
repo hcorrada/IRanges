@@ -503,17 +503,6 @@ setMethod("[", "RangedData",
             x
           })
 
-setReplaceMethod("[", "RangedData",
-                 function(x, i, j,..., value)
-                 stop("operation not supported")
-                 )
-
-### S3/S4 combo for window<-.RangedData
-`window<-.RangedData` <- function(x, start=NA, end=NA, width=NA,
-                                     keepLength=TRUE, ..., value)
-    stop("operation not supported")
-setReplaceMethod("window", "RangedData", `window<-.RangedData`)
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Combining and splitting.
 ###
@@ -577,8 +566,8 @@ setMethod("rbind", "RangedData", function(..., deparse.level=1) {
 ### Coercion
 ###
 
-as.data.frame.RangedData <- 
-    function(x, row.names=NULL, optional=FALSE, ...)
+### S3/S4 combo for as.data.frame.RangedData
+as.data.frame.RangedData <- function(x, row.names=NULL, optional=FALSE, ...)
 {
     if (!(is.null(row.names) || is.character(row.names)))
         stop("'row.names'  must be NULL or a character vector")
@@ -589,7 +578,6 @@ as.data.frame.RangedData <-
                row.names = row.names,
                stringsAsFactors = FALSE)
 }
-
 setMethod("as.data.frame", "RangedData",as.data.frame.RangedData)
 
 setAs("RangedData", "DataFrame",

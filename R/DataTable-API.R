@@ -40,61 +40,8 @@ setReplaceMethod("dimnames", "DataTable",
 ### Subsetting.
 ###
 
-### S3/S4 combo for window<-.DataTable
-`window<-.DataTable` <- function(x, start=NA, end=NA, width=NA,
-                                    keepLength=TRUE, ..., value)
-{
-    if (!isTRUEorFALSE(keepLength))
-        stop("'keepLength' must be TRUE or FALSE")
-    solved_SEW <- solveUserSEWForSingleSeq(nrow(x), start, end, width)
-    if (!is.null(value)) {
-        if (!is(value, class(x))) {
-            value <- try(as(value, class(x)), silent = TRUE)
-            if (inherits(value, "try-error"))
-                stop("'value' must be a ", class(x), " object or NULL")
-        }
-        if (keepLength && (nrow(value) != width(solved_SEW)))
-            value <- value[rep(seq_len(nrow(value)),
-                               length.out = width(solved_SEW)), ,
-                           drop=FALSE]
-    }
-    rbind(window(x, end=start(solved_SEW) - 1L),
-          value,
-          window(x, start=end(solved_SEW) + 1L))
-}
-setReplaceMethod("window", "DataTable", `window<-.DataTable`)
-
-setMethod("head", "DataTable",
-          function(x, n = 6L, ...)
-          {
-              stopifnot(length(n) == 1L)
-              if (n < 0L)
-                  n <- max(nrow(x) + n, 0L)
-              else
-                  n <- min(n, nrow(x))
-              if (n == 0L)
-                  x[integer(0),,drop = FALSE]
-              else
-                  window(x, 1L, n)
-          })
-
-setMethod("tail", "DataTable",
-          function(x, n = 6L, ...)
-          {
-              stopifnot(length(n) == 1L)
-              xlen <- nrow(x)
-              if (n < 0L) 
-                  n <- max(xlen + n, 0L)
-              else
-                  n <- min(n, xlen)
-              if (n == 0L)
-                  x[integer(0),,drop = FALSE]
-              else
-                  window(x, xlen - n + 1L, xlen)
-          })
-
 setMethod("subset", "DataTable",
-          function (x, subset, select, drop = FALSE, ...) 
+          function(x, subset, select, drop = FALSE, ...) 
           {
               if (missing(subset)) 
                   i <- TRUE
@@ -231,7 +178,7 @@ setMethod("by", "DataTable",
 ###
 
 ### S3/S4 combo for duplicated.DataTable
-duplicated.DataTable <- function (x, incomparables=FALSE, fromLast=FALSE, ...)
+duplicated.DataTable <- function(x, incomparables=FALSE, fromLast=FALSE, ...)
 {
     duplicated(as(x, "data.frame"),
                incomparables=incomparables, fromLast=fromLast, ...)

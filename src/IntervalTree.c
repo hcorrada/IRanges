@@ -519,6 +519,8 @@ SEXP _IntegerIntervalTree_overlap_first(SEXP r_query_start, SEXP r_order, struct
     }
   }
   UNPROTECT(1);
+  slReverse(&results);
+  
   return r_results;
 }
 
@@ -593,6 +595,8 @@ SEXP _IntegerIntervalTree_overlap_last(SEXP r_query_start, SEXP r_order, struct 
     }
   }
   UNPROTECT(1);
+  slReverse(&results);
+  
   return r_results;
 }
 
@@ -685,6 +689,8 @@ SEXP _IntegerIntervalTree_overlap_all(SEXP r_query_start, SEXP r_order, struct s
   SET_SLOT(r_results, install("queryLength"), ScalarInteger(nranges));
   SET_SLOT(r_results, install("subjectLength"), ScalarInteger(subjectLength));
 
+  slReverse(&results);
+  
   UNPROTECT(1);
   return r_results;
 }
