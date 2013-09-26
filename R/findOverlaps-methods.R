@@ -27,8 +27,8 @@ setGeneric("findOverlaps", signature = c("query", "subject"),
   query <- as(query, "IRanges")
   query_ord <- NULL
   res$origQuery <- query
-  adjust <- maxgap - minoverlap + 1L
-  if (adjust > 0L)
+  adjust <- (maxgap - minoverlap + 1L) * (width(query) > 0L)
+  if (sum(adjust) > 0L)
     query <-
       resize(query, width(query) + 2L * adjust, fix = "center")
   res$unsortedQuery <- query
@@ -152,7 +152,7 @@ setMethod("findOverlaps", c("Ranges", "IntervalTree"),
 
             # make initial findOverlaps call
             fun <- paste("overlap_", select, sep = "")
-            result <- .IntervalTreeCall(subject, fun, query, query_ord)
+            result <- IntervalTreeCall(subject, fun, query, query_ord)
 
             # postprocess results
             .postProcess_findOverlaps_result(result, unsortedQuery, origQuery, subject, type, minoverlap, maxgap, origSelect)
